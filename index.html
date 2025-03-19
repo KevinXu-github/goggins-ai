@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goggins Motivational Chatbot</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="page-container">
+      <div id="commitment-container" class="commitment-container">
+          <p><i class="fas fa-fire"></i> Prove your mental toughness!</p>
+          <div class="toughness-meter">
+            <div class="toughness-progress" id="toughness-progress" style="width: 0%"></div>
+          </div>
+      </div>
+      
+      <div class="chat-container">
+          <div class="chat-header">
+              <button id="settings-btn" class="settings-btn" title="Settings">
+                  <i class="fas fa-cog"></i>
+              </button>
+              <h2 id="chatbot-name">Goggins Bot</h2>
+              <button id="clear-btn" class="clear-btn" title="Clear chat history">
+                  <i class="fas fa-trash-alt"></i>
+              </button>
+          </div>
+          
+          <div class="avatar-main-container">
+              <div class="avatar-wrapper">
+                  <img id="ai-avatar" src="assets/neutral.png" alt="Goggins AI Avatar">
+                  <div class="avatar-status">
+                      <span id="mood-text">Ready to push your limits</span>
+                  </div>
+              </div>
+          </div>
+          
+          <div class="chat-box" id="chat-box">
+              <!-- Messages will appear here -->
+          </div>
+          
+          <div class="chat-input">
+              <input type="text" id="user-input" placeholder="Type your message here...">
+              <button id="send-btn">
+                  <i class="fas fa-paper-plane"></i>
+              </button>
+          </div>
+      </div>
+
+      <!-- Settings Panel -->
+      <div class="settings-panel" id="settings-panel">
+          <div class="settings-header">
+              <h3>Customize Your Goggins</h3>
+              <button id="close-settings" class="close-settings">
+                  <i class="fas fa-times"></i>
+              </button>
+          </div>
+          <div class="settings-content">
+              <div class="setting-group">
+                  <label for="chatbot-name-input">Chatbot Name:</label>
+                  <input type="text" id="chatbot-name-input" value="Goggins Bot">
+              </div>
+              
+              <div class="setting-group">
+                  <label>Theme Color:</label>
+                  <div class="color-options">
+                      <button class="color-option" data-color="#1a1a1a" style="background-color: #1a1a1a;"></button>
+                      <button class="color-option" data-color="#003366" style="background-color: #003366;"></button>
+                      <button class="color-option" data-color="#8B0000" style="background-color: #8B0000;"></button>
+                      <button class="color-option" data-color="#006400" style="background-color: #006400;"></button>
+                      <button class="color-option" data-color="#4a4a4a" style="background-color: #4a4a4a;"></button>
+                  </div>
+              </div>
+              
+              <div class="setting-group">
+                  <label>Intensity Level:</label>
+                  <select id="intensity-select">
+                      <option value="challenging">Challenging (Default)</option>
+                      <option value="reflective">Reflective</option>
+                      <option value="drill">Drill Sergeant</option>
+                  </select>
+              </div>
+              
+              <div class="setting-group toggle-group">
+                  <label for="show-timestamps">Show Message Timestamps:</label>
+                  <label class="toggle-switch">
+                      <input type="checkbox" id="show-timestamps">
+                      <span class="toggle-slider"></span>
+                  </label>
+              </div>
+              
+              <div class="setting-group toggle-group">
+                  <label for="dark-mode">Dark Mode:</label>
+                  <label class="toggle-switch">
+                      <input type="checkbox" id="dark-mode" checked>
+                      <span class="toggle-slider"></span>
+                  </label>
+              </div>
+              
+              <div class="settings-footer">
+                  <button id="save-settings" class="btn save-btn">Save Changes</button>
+                  <button id="reset-settings" class="btn reset-btn">Reset to Default</button>
+              </div>
+          </div>
+      </div>
+    </div>
+    
+    <!-- Settings Overlay -->
+    <div class="settings-overlay" id="settings-overlay"></div>
+
+    <!-- Define commitment tracking functions -->
+    <script>
+    // Basic commitment tracking stubs
+    window.resetCommitment = window.resetCommitment || function() {
+      console.log("Commitment tracking reset");
+    };
+    window.isCommitted = window.isCommitted || function() { 
+      return true; 
+    };
+    window.isCommitmentInProgress = window.isCommitmentInProgress || function() { 
+      return false; 
+    };
+    window.startCommitmentTracking = window.startCommitmentTracking || function() {
+      return "I need to see your commitment level! Tell me what you're going to accomplish today.";
+    };
+    window.processCommitmentResponse = window.processCommitmentResponse || function() {
+      return { isValidating: false };
+    };
+    window.notifyMoodChange = window.notifyMoodChange || function() { return true; };
+    </script>
+    
+    <!-- Load scripts in proper order -->
+    <script src="commitment-tracking.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
