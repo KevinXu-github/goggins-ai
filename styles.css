@@ -264,28 +264,6 @@ body {
     font-size: 1.2rem;
 }
 
-/* Commitment Container */
-.commitment-container {
-    background-color: var(--primary-color);
-    color: white;
-    padding: 10px 15px;
-    margin-bottom: 15px;
-    border-radius: 10px;
-    text-align: center;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-    max-width: 400px;
-    margin: 0 auto 15px auto;
-    position: relative;
-    z-index: 10;
-}
-
-.commitment-container p {
-    margin: 0 0 8px 0;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
 .toughness-meter {
     background-color: rgba(255,255,255,0.3);
     height: 8px;
