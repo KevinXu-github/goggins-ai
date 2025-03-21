@@ -14,25 +14,34 @@ app.use(express.static(path.join(__dirname)));
 
 // API key endpoint
 app.get('/api-key', (req, res) => {
+  console.log("API key request received");
   if (process.env.OPENAI_API_KEY) {
+    console.log("Returning API key (hidden for security)");
     res.json({ key: process.env.OPENAI_API_KEY });
   } else {
+    console.log("No API key found in environment variables");
     res.status(404).json({ error: 'API key not found in environment variables' });
   }
 });
 
 // Proxy endpoint for OpenAI TTS
 app.post('/api/tts', async (req, res) => {
+  console.log("TTS request received:", req.body.text?.substring(0, 30) + "...");
+  
   try {
     if (!process.env.OPENAI_API_KEY) {
+      console.error("No API key configured on server");
       return res.status(400).json({ error: 'API key not configured on server' });
     }
     
     const { text, voice, speed } = req.body;
     
     if (!text) {
+      console.error("Text is required for TTS");
       return res.status(400).json({ error: 'Text is required' });
     }
+    
+    console.log(`Processing TTS request: voice=${voice}, speed=${speed}`);
     
     // Call OpenAI API
     const response = await axios({
@@ -51,15 +60,45 @@ app.post('/api/tts', async (req, res) => {
       responseType: 'arraybuffer'
     });
     
+    console.log("Received TTS response from OpenAI");
+    
     // Set appropriate headers
     res.set('Content-Type', 'audio/mpeg');
     res.send(response.data);
     
   } catch (error) {
-    console.error('TTS API Error:', error.response?.data || error.message);
+    console.error('TTS API Error:', error.response?.status, error.message);
+    if (error.response?.data) {
+      try {
+        // Try to parse the error data if it's in buffer format
+        const errorData = JSON.parse(Buffer.from(error.response.data).toString());
+        console.error('Error details:', errorData);
+      } catch (e) {
+        console.error('Error details not available in JSON format');
+      }
+    }
+    
     res.status(500).json({ 
       error: 'Failed to generate speech',
-      details: error.response?.data || error.message 
+      details: error.message
+    });
+  }
+});
+
+// Test endpoint to verify API key
+app.get('/api/test-key', (req, res) => {
+  console.log("Testing API key:", process.env.OPENAI_API_KEY ? "Available" : "Missing");
+  if (process.env.OPENAI_API_KEY) {
+    // Only show first few characters for security
+    const keyPreview = process.env.OPENAI_API_KEY.substring(0, 5) + "...";
+    res.json({ 
+      keyAvailable: true,
+      keyFirstChars: keyPreview
+    });
+  } else {
+    res.json({ 
+      keyAvailable: false,
+      keyFirstChars: "none"
     });
   }
 });

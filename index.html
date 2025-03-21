@@ -20,12 +20,9 @@
               </button>
           </div>
           
-          <div class="avatar-main-container">
-              <div class="avatar-wrapper">
-                  <img id="ai-avatar" src="assets/neutral.png" alt="Goggins AI Avatar">
-                  <div class="avatar-status">
-                      <span id="mood-text">Ready to push your limits</span>
-                  </div>
+          <div class="chat-intro">
+              <div class="mood-indicator">
+                  <span id="mood-text">Ready to push your limits</span>
               </div>
           </div>
           
@@ -138,31 +135,9 @@
     
     <!-- Settings Overlay -->
     <div class="settings-overlay" id="settings-overlay"></div>
-
-    <!-- Define commitment tracking functions -->
-    <script>
-    // Basic commitment tracking stubs
-    window.resetCommitment = window.resetCommitment || function() {
-      console.log("Commitment tracking reset");
-    };
-    window.isCommitted = window.isCommitted || function() { 
-      return true; 
-    };
-    window.isCommitmentInProgress = window.isCommitmentInProgress || function() { 
-      return false; 
-    };
-    window.startCommitmentTracking = window.startCommitmentTracking || function() {
-      return "I need to see your commitment level! Tell me what you're going to accomplish today.";
-    };
-    window.processCommitmentResponse = window.processCommitmentResponse || function() {
-      return { isValidating: false };
-    };
-    window.notifyMoodChange = window.notifyMoodChange || function() { return true; };
-    </script>
     
     <!-- Load scripts in proper order -->
     <script src="voice-chat.js"></script>
-    <script src="commitment-tracking.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

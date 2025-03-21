@@ -9,9 +9,10 @@
     --background-color: #f5f5f5;
     --foreground-color: #333;
     --chat-bg: #f9f9f9;
-    --message-ai-bg: #e9e9eb;
+    --message-ai-bg: #3a3a3a;
     --message-user-bg: var(--primary-color);
     --message-user-text: white;
+    --message-ai-text: white;
     --container-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     --border-color: #eee;
     --input-border: #ddd;
@@ -28,6 +29,7 @@
     --message-ai-bg: #3a3a3a;
     --message-user-bg: #4a4a4a;
     --message-user-text: white;
+    --message-ai-text: white;
     --container-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     --border-color: #444;
     --input-border: #555;
@@ -107,8 +109,8 @@ body {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Main Avatar Container */
-.avatar-main-container {
+/* Chat Intro Section */
+.chat-intro {
     padding: 15px;
     display: flex;
     justify-content: center;
@@ -116,33 +118,17 @@ body {
     border-bottom: 1px solid var(--border-color);
 }
 
-.avatar-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-}
-
-#ai-avatar {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 4px solid var(--primary-color);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
-}
-
-.avatar-status {
-    margin-top: 10px;
+.mood-indicator {
+    padding: 5px 15px;
     font-size: 0.9rem;
     font-weight: 700;
     color: white;
     text-align: center;
     background-color: rgba(0, 0, 0, 0.5);
-    padding: 5px 12px;
+    padding: 10px 15px;
     border-radius: 5px;
     text-transform: uppercase;
+    border-left: 4px solid #ff3b25;
 }
 
 /* Chat Box */
@@ -159,7 +145,6 @@ body {
 /* Message Styles */
 .user-message, .ai-message {
     display: flex;
-    gap: 10px;
     margin-bottom: 10px;
     animation: fadeIn 0.3s ease-in-out;
 }
@@ -172,21 +157,8 @@ body {
     justify-content: flex-start;
 }
 
-.avatar-small {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    overflow: hidden;
-}
-
-.avatar-small img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
 .message-content {
-    max-width: 70%;
+    max-width: 80%; /* Increased from 70% since we don't have avatars */
     padding: 10px 15px;
     border-radius: 18px;
     font-size: 0.95rem;
@@ -200,7 +172,7 @@ body {
 
 .ai-message .message-content {
     background-color: var(--message-ai-bg);
-    color: var(--foreground-color);
+    color: var(--message-ai-text);
     border-bottom-left-radius: 5px;
     font-weight: 500;
 }
@@ -211,10 +183,6 @@ body {
     color: #999;
     margin-top: 4px;
     align-self: flex-end;
-}
-
-.ai-message .message-timestamp {
-    margin-left: 45px;
 }
 
 /* Chat Input */
@@ -234,7 +202,11 @@ body {
     outline: none;
     transition: border-color 0.3s;
     background-color: white;
-    color: var(--foreground-color);
+    color: black; /* Fixed text color to black */
+}
+
+.chat-input input::placeholder {
+    color: #777; /* Better placeholder visibility */
 }
 
 .chat-input input:focus {
@@ -262,20 +234,6 @@ body {
 
 .chat-input button i {
     font-size: 1.2rem;
-}
-
-.toughness-meter {
-    background-color: rgba(255,255,255,0.3);
-    height: 8px;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.toughness-progress {
-    background-color: #ff3b25;
-    height: 100%;
-    width: 0%;
-    transition: width 0.3s ease;
 }
 
 /* Settings Panel */
@@ -381,6 +339,7 @@ body {
     border-radius: 8px;
     font-size: 0.95rem;
     transition: border-color 0.3s;
+    color: black; /* Fixed color */
 }
 
 .setting-group input[type="text"]:focus,
@@ -512,19 +471,6 @@ input:checked + .toggle-slider:before {
     padding: 20px;
 }
 
-/* Mood-specific styling */
-.mood-challenging .avatar-status {
-    border-left: 4px solid #ff3b25;
-}
-
-.mood-reflective .avatar-status {
-    border-left: 4px solid #3b82f6;
-}
-
-.mood-drill .avatar-status {
-    border-left: 4px solid #facc15;
-}
-
 /* Voice button styles */
 #voice-btn, #mic-btn {
     background-color: var(--primary-color);
@@ -555,18 +501,6 @@ input:checked + .toggle-slider:before {
     animation: pulse 1.5s infinite;
 }
 
-/* Adjust chat input to accommodate the new buttons */
-.chat-input {
-    display: flex;
-    padding: 15px;
-    background-color: #333;
-    border-top: 1px solid var(--border-color);
-}
-
-.chat-input input {
-    flex: 1;
-}
-
 /* Pulse animation for active mic */
 @keyframes pulse {
     0% {
@@ -589,7 +523,7 @@ input:checked + .toggle-slider:before {
 .play-voice-btn {
     background: none;
     border: none;
-    color: var(--primary-color);
+    color: white;
     cursor: pointer;
     opacity: 0.7;
     transition: opacity 0.3s;
@@ -616,5 +550,54 @@ input:checked + .toggle-slider:before {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* Typing indicator */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: var(--message-ai-bg);
+    border-radius: 18px;
+    color: white;
+    max-width: 80%;
+}
+
+.typing-indicator span {
+    height: 8px;
+    width: 8px;
+    float: left;
+    margin: 0 2px;
+    background-color: #ffffff;
+    display: block;
+    border-radius: 50%;
+    opacity: 0.4;
+}
+
+.typing-indicator span:nth-of-type(1) {
+    animation: typing 1s infinite;
+}
+
+.typing-indicator span:nth-of-type(2) {
+    animation: typing 1s 0.2s infinite;
+}
+
+.typing-indicator span:nth-of-type(3) {
+    animation: typing 1s 0.4s infinite;
+}
+
+@keyframes typing {
+    0% {
+        transform: translateY(0px);
+        opacity: 0.4;
+    }
+    50% {
+        transform: translateY(-5px);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(0px);
+        opacity: 0.4;
     }
 }
