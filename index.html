@@ -34,12 +34,21 @@
           </div>
           
           <div class="chat-input">
+              <button id="mic-btn" title="Voice input">
+                  <i class="fas fa-microphone"></i>
+              </button>
               <input type="text" id="user-input" placeholder="Type your message here...">
               <button id="send-btn">
                   <i class="fas fa-paper-plane"></i>
               </button>
+              <button id="voice-btn" title="Toggle voice response">
+                  <i class="fas fa-volume-up"></i>
+              </button>
           </div>
       </div>
+
+      <!-- Audio player (hidden) -->
+      <audio id="audio-player" style="display: none;"></audio>
 
       <!-- Settings Panel -->
       <div class="settings-panel" id="settings-panel">
@@ -91,6 +100,34 @@
                   </label>
               </div>
               
+              <div class="setting-group toggle-group">
+                  <label for="voice-output">Voice Responses:</label>
+                  <label class="toggle-switch">
+                      <input type="checkbox" id="voice-output" checked>
+                      <span class="toggle-slider"></span>
+                  </label>
+              </div>
+              
+              <div class="setting-group toggle-group">
+                  <label for="speech-input">Speech Recognition:</label>
+                  <label class="toggle-switch">
+                      <input type="checkbox" id="speech-input">
+                      <span class="toggle-slider"></span>
+                  </label>
+              </div>
+              
+              <div class="setting-group">
+                  <label for="voice-select">Voice Type:</label>
+                  <select id="voice-select">
+                      <option value="onyx">Onyx (Deep, Commanding)</option>
+                      <option value="echo">Echo (Balanced, Clear)</option>
+                      <option value="alloy">Alloy (Versatile, Neutral)</option>
+                      <option value="nova">Nova (Warm, Friendly)</option>
+                      <option value="shimmer">Shimmer (Bright, Optimistic)</option>
+                      <option value="fable">Fable (Animated, Expressive)</option>
+                  </select>
+              </div>
+              
               <div class="settings-footer">
                   <button id="save-settings" class="btn save-btn">Save Changes</button>
                   <button id="reset-settings" class="btn reset-btn">Reset to Default</button>
@@ -124,6 +161,7 @@
     </script>
     
     <!-- Load scripts in proper order -->
+    <script src="voice-chat.js"></script>
     <script src="commitment-tracking.js"></script>
     <script src="app.js"></script>
 </body>

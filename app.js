@@ -18,6 +18,12 @@ const showTimestampsToggle = document.getElementById('show-timestamps');
 const darkModeToggle = document.getElementById('dark-mode');
 const intensitySelect = document.getElementById('intensity-select');
 const colorOptions = document.querySelectorAll('.color-option');
+const voiceToggle = document.getElementById('voice-output');
+const speechToggle = document.getElementById('speech-input');
+const voiceSelect = document.getElementById('voice-select');
+const micBtn = document.getElementById('mic-btn');
+const voiceBtn = document.getElementById('voice-btn');
+const audioPlayer = document.getElementById('audio-player');
 
 // Default settings
 const defaultSettings = {
@@ -26,7 +32,11 @@ const defaultSettings = {
     showTimestamps: false,
     darkMode: true,
     intensity: 'challenging',
-    apiKey: process.env.OPENAI_API_KEY || '' // Read from environment if available
+    apiKey: process.env.OPENAI_API_KEY || '', // Read from environment if available
+    voiceEnabled: true,
+    speechInputEnabled: false,
+    voiceType: 'onyx',
+    voiceSpeed: 1.1
 };
 
 // Chatbot State
@@ -204,7 +214,8 @@ function addWelcomeMessage() {
         text: "What's up? Ready to put in the work today? I'm here to push you beyond your limits. Remember: It's not about motivation, it's about dedication and discipline.",
         isUser: false,
         mood: 'challenging',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        isInitial: true
     };
     chatbotState.messages.push(welcomeMessage);
     saveMessageHistory();
@@ -227,6 +238,11 @@ function displaySavedMessage(message) {
         
         avatarDiv.appendChild(avatarImg);
         messageDiv.appendChild(avatarDiv);
+        
+        // If message has audio or voice is enabled, add has-audio class
+        if (message.audioUrl || chatbotState.settings.voiceEnabled) {
+            messageDiv.classList.add('has-audio');
+        }
     }
     
     const contentDiv = document.createElement('div');
@@ -234,8 +250,14 @@ function displaySavedMessage(message) {
     
     const paragraph = document.createElement('p');
     paragraph.textContent = message.text;
-    
     contentDiv.appendChild(paragraph);
+    
+    // Add play button for AI messages with audio
+    if (!message.isUser && (message.audioUrl || chatbotState.settings.voiceEnabled)) {
+        const playButton = voiceChat.createPlayButton(message.text, message.audioUrl);
+        contentDiv.appendChild(playButton);
+    }
+    
     messageDiv.appendChild(contentDiv);
     
     // Add timestamp
@@ -296,13 +318,14 @@ function removeTypingIndicator() {
 }
 
 // Function to add a message to the chat box
-function addMessage(text, isUser = false) {
+async function addMessage(text, isUser = false) {
     // Create message object
     const messageObj = {
         text: text,
         isUser: isUser,
         mood: chatbotState.mood,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        audioUrl: null
     };
     
     // Add to message history
@@ -326,6 +349,11 @@ function addMessage(text, isUser = false) {
         
         avatarDiv.appendChild(avatarImg);
         messageDiv.appendChild(avatarDiv);
+        
+        // If voice is enabled, add has-audio class
+        if (chatbotState.settings.voiceEnabled) {
+            messageDiv.classList.add('has-audio');
+        }
     }
     
     const contentDiv = document.createElement('div');
@@ -333,8 +361,28 @@ function addMessage(text, isUser = false) {
     
     const paragraph = document.createElement('p');
     paragraph.textContent = text;
-    
     contentDiv.appendChild(paragraph);
+    
+    // Add play button for AI messages if voice is enabled
+    if (!isUser && chatbotState.settings.voiceEnabled) {
+        const playButton = voiceChat.createPlayButton(text, null);
+        contentDiv.appendChild(playButton);
+        
+        // Generate speech in background if voice is enabled
+        if (chatbotState.settings.voiceEnabled) {
+            voiceChat.textToSpeech(text).then(audioUrl => {
+                if (audioUrl) {
+                    // Play the audio automatically
+                    voiceChat.playAudio(audioUrl);
+                    
+                    // Update message object with audio URL
+                    messageObj.audioUrl = audioUrl;
+                    saveMessageHistory();
+                }
+            });
+        }
+    }
+    
     messageDiv.appendChild(contentDiv);
     
     // Add timestamp
@@ -371,7 +419,7 @@ function saveSettings() {
 function loadSettings() {
     const savedSettings = localStorage.getItem('gogginsSettings');
     if (savedSettings) {
-        chatbotState.settings = JSON.parse(savedSettings);
+        chatbotState.settings = { ...defaultSettings, ...JSON.parse(savedSettings) };
     }
     applySettings();
 }
@@ -389,6 +437,20 @@ function applySettings() {
     showTimestampsToggle.checked = chatbotState.settings.showTimestamps;
     darkModeToggle.checked = chatbotState.settings.darkMode;
     intensitySelect.value = chatbotState.settings.intensity;
+    
+    // Update voice settings
+    if (voiceToggle) voiceToggle.checked = chatbotState.settings.voiceEnabled;
+    if (speechToggle) speechToggle.checked = chatbotState.settings.speechInputEnabled;
+    if (voiceSelect) voiceSelect.value = chatbotState.settings.voiceType || 'onyx';
+    
+    // Update voice button state
+    if (voiceBtn) {
+        if (chatbotState.settings.voiceEnabled) {
+            voiceBtn.classList.add('active');
+        } else {
+            voiceBtn.classList.remove('active');
+        }
+    }
     
     // Update color option selection
     colorOptions.forEach(option => {
@@ -486,6 +548,15 @@ function updateMoodDisplay(mood) {
     // Update container class for styling
     avatarMainContainer.classList.remove('mood-challenging', 'mood-reflective', 'mood-drill');
     avatarMainContainer.classList.add(`mood-${mood}`);
+    
+    // Update voice settings based on mood
+    if (mood === 'drill') {
+        voiceChat.settings.speed = 1.2; // Faster for drill sergeant
+    } else if (mood === 'reflective') {
+        voiceChat.settings.speed = 0.9; // Slower for reflective mood
+    } else {
+        voiceChat.settings.speed = 1.1; // Default for challenging
+    }
 }
 
 // Function to handle sending a message
@@ -567,6 +638,17 @@ function saveSettingsChanges() {
         chatbotState.settings.primaryColor = activeColor.dataset.color;
     }
     
+    // Get voice settings
+    chatbotState.settings.voiceEnabled = voiceToggle.checked;
+    chatbotState.settings.speechInputEnabled = speechToggle.checked;
+    chatbotState.settings.voiceType = voiceSelect.value;
+    
+    // Update voice chat settings
+    voiceChat.settings.enabled = chatbotState.settings.voiceEnabled;
+    voiceChat.settings.speechRecognitionEnabled = chatbotState.settings.speechInputEnabled;
+    voiceChat.settings.voice = chatbotState.settings.voiceType;
+    voiceChat.saveSettings();
+    
     // Save settings to localStorage
     saveSettings();
     
@@ -579,6 +661,14 @@ function saveSettingsChanges() {
 
 function resetSettingsToDefault() {
     chatbotState.settings = { ...defaultSettings };
+    
+    // Update voice chat settings
+    voiceChat.settings.enabled = defaultSettings.voiceEnabled;
+    voiceChat.settings.speechRecognitionEnabled = defaultSettings.speechInputEnabled;
+    voiceChat.settings.voice = defaultSettings.voiceType;
+    voiceChat.settings.speed = defaultSettings.voiceSpeed;
+    voiceChat.saveSettings();
+    
     saveSettings();
     applySettings();
 }
@@ -627,6 +717,10 @@ function loadApiKey() {
 
 // Initialize - load message history, settings, and update UI
 window.addEventListener('DOMContentLoaded', () => {
+    // Initialize voice chat
+    voiceChat.init();
+    voiceChat.setupEventListeners();
+    
     loadSettings();
     loadMessageHistory();
     

@@ -524,3 +524,97 @@ input:checked + .toggle-slider:before {
 .mood-drill .avatar-status {
     border-left: 4px solid #facc15;
 }
+
+/* Voice button styles */
+#voice-btn, #mic-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#mic-btn {
+    margin-left: 0;
+    margin-right: 10px;
+}
+
+#voice-btn:hover, #mic-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+#voice-btn.active, #mic-btn.active {
+    background-color: #ff3b25;
+    animation: pulse 1.5s infinite;
+}
+
+/* Adjust chat input to accommodate the new buttons */
+.chat-input {
+    display: flex;
+    padding: 15px;
+    background-color: #333;
+    border-top: 1px solid var(--border-color);
+}
+
+.chat-input input {
+    flex: 1;
+}
+
+/* Pulse animation for active mic */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Add visual cue for messages with audio */
+.ai-message.has-audio .message-content {
+    border-left: 3px solid #ff3b25;
+}
+
+/* Play button that appears on messages */
+.play-voice-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    margin-top: 5px;
+}
+
+.play-voice-btn:hover {
+    opacity: 1;
+}
+
+.play-voice-btn i {
+    margin-right: 5px;
+}
+
+/* Animation for message appearance */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
