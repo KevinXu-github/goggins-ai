@@ -18,7 +18,7 @@ print("======================")
 # Set the specific file path
 input_file = r"C:\Users\rt\projects\goggins\assets\goggin_iso.mp3"
 output_dir = "voice_samples"
-text = "This is a test of my cloned voice using Tortoise TTS."
+text = "This is a test of my cloned voice using Tortoise TTS at the highest quality settings."
 
 # Create output directory
 os.makedirs(output_dir, exist_ok=True)
@@ -33,8 +33,8 @@ except Exception as e:
     print("Make sure the file exists and is in a supported format")
     exit(1)
 
-# Parameters for splitting
-segment_length_ms = 15000  # 15 seconds per segment
+# Parameters for splitting - use longer segments for better quality
+segment_length_ms = 20000  # 20 seconds per segment
 min_segment_length_ms = 5000  # Minimum 5 seconds per segment
 
 # Split into chunks
@@ -50,7 +50,7 @@ print(f"Saving {len(chunks)} audio segments...")
 for i, segment in enumerate(chunks):
     # Normalize audio level
     normalized = segment.normalize()
-    # Export as WAV
+    # Export as WAV with higher quality
     filename = f"{output_dir}/segment_{i:03d}.wav"
     normalized.export(filename, format="wav")
     print(f"Saved: {filename} ({len(normalized)/1000:.2f} seconds)")
@@ -58,7 +58,7 @@ for i, segment in enumerate(chunks):
 print(f"\nFinished! {len(chunks)} voice samples saved to the '{output_dir}' folder.")
 
 # Step 2: Generate speech with Tortoise TTS
-print("\n--- VOICE CLONING WITH TORTOISE TTS ---")
+print("\n--- HIGH QUALITY VOICE CLONING WITH TORTOISE TTS ---")
 print(f"Initializing Tortoise TTS...")
 
 # Force CUDA usage if available
@@ -68,7 +68,7 @@ if torch.cuda.is_available():
     print(f"Using GPU: {torch.cuda.get_device_name(0)}")
 else:
     device = "cpu"
-    print("No GPU available, using CPU")
+    print("No GPU available, using CPU (this will be very slow for high quality)")
 
 # Initialize TTS with forced device
 tts = TextToSpeech(device=device)
@@ -82,49 +82,81 @@ for file in os.listdir(output_dir):
         audio = load_audio(full_path, 24000)
         voice_samples.append(audio)
 
-# Generate speech
+print(f"Loaded {len(voice_samples)} voice samples")
+
+# Generate speech with highest quality settings
 print(f"Text: {text}")
+print(f"Generating with HIGH QUALITY settings (this may take several minutes)...")
+
 try:
-    # Try with 'fast' preset first for GPU acceleration
-    print("Trying fast preset for GPU acceleration...")
+    # Use the high_quality preset with compatible parameters
     gen_audio = tts.tts_with_preset(
         text=text,
         voice_samples=voice_samples,
-        preset="fast"
+        preset="high_quality"
     )
 except Exception as e:
-    print(f"Fast preset failed: {e}")
-    print("Trying default approach...")
+    print(f"High quality preset failed: {e}")
+    print("Falling back to standard approach with high quality...")
     try:
-        # Fall back to default
+        # Fall back to manual configuration with compatible parameters
         gen_audio = tts.tts(
             text=text,
-            voice_samples=voice_samples
+            voice_samples=voice_samples,
+            k=6,  # Higher k value for better quality (up to 6)
+            diffusion_iterations=200,  # Increased iterations
+            num_autoregressive_samples=256,  # Increased sampling
+            temperature=0.8,
+            length_penalty=1.0,
+            repetition_penalty=2.0,
+            top_p=0.8
         )
     except Exception as e2:
-        print(f"Default approach failed: {e2}")
-        print("Trying one more approach...")
-        # Try to call tts method with different parameter combinations
+        print(f"Standard approach failed: {e2}")
+        print("Falling back to minimal high quality settings...")
         try:
             gen_audio = tts.tts(
                 text=text,
                 voice_samples=voice_samples,
-                k=1,
-                use_deterministic_seed=True
+                k=4,
+                num_autoregressive_samples=128
             )
         except Exception as e3:
-            print(f"All attempts failed. Error: {e3}")
-            print("Please check Tortoise TTS documentation for your specific version.")
-            exit(1)
+            print(f"Trying basic approach...")
+            try:
+                gen_audio = tts.tts(
+                    text=text,
+                    voice_samples=voice_samples
+                )
+            except Exception as e4:
+                print(f"All attempts failed. Error: {e4}")
+                print("Please check Tortoise TTS documentation for your specific version.")
+                exit(1)
 
-# Save the generated audio (using soundfile instead of save_wav)
-output_file = "cloned_voice_output.wav"
-sf.write(output_file, gen_audio.cpu().numpy(), 24000)
-print(f"Generated speech saved to {output_file}")
+# Check the shape of the generated audio
+print(f"Generated audio shape: {gen_audio.shape}")
 
-print("\nVoice cloning complete!")
+# Handle different possible shapes
+if len(gen_audio.shape) == 3:
+    # If shape is [1, 1, samples], reshape to [samples]
+    gen_audio_np = gen_audio.squeeze().cpu().numpy()
+elif len(gen_audio.shape) == 2:
+    # If shape is [1, samples], reshape to [samples]
+    gen_audio_np = gen_audio.squeeze(0).cpu().numpy()
+else:
+    # Already in the right shape
+    gen_audio_np = gen_audio.cpu().numpy()
 
-# Create a simple script for generating more speech with this voice
+print(f"Reshaped audio shape: {gen_audio_np.shape}")
+
+# Save the generated audio with high quality
+output_file = "high_quality_voice.wav"
+sf.write(output_file, gen_audio_np, 24000)
+print(f"Generated high quality speech saved to {output_file}")
+
+print("\nHigh quality voice cloning complete!")
+
+# Create a script for generating more high quality speech with this voice
 with open("generate_speech.py", "w") as f:
     f.write("""
 import os
@@ -143,11 +175,11 @@ if torch.cuda.is_available():
     print(f"CUDA version: {torch.version.cuda}")
 print("======================")
 
-parser = argparse.ArgumentParser(description="Generate speech with cloned voice")
+parser = argparse.ArgumentParser(description="Generate high quality speech with cloned voice")
 parser.add_argument("--voice_dir", type=str, default="voice_samples", help="Directory with voice samples")
 parser.add_argument("--text", type=str, required=True, help="Text to synthesize")
-parser.add_argument("--output", type=str, default="output.wav", help="Output file")
-parser.add_argument("--preset", type=str, default="fast", help="Generation preset (fast, standard, high_quality)")
+parser.add_argument("--output", type=str, default="high_quality_output.wav", help="Output file")
+parser.add_argument("--quality", type=str, default="high", choices=["high", "medium", "fast"], help="Quality preset")
 args = parser.parse_args()
 
 # Force CUDA usage if available
@@ -157,7 +189,7 @@ if torch.cuda.is_available():
     print(f"Using GPU: {torch.cuda.get_device_name(0)}")
 else:
     device = "cpu"
-    print("No GPU available, using CPU")
+    print("No GPU available, using CPU - this will be VERY slow for high quality")
 
 # Initialize TTS
 tts = TextToSpeech(device=device)
@@ -171,41 +203,78 @@ for file in os.listdir(args.voice_dir):
         audio = load_audio(full_path, 24000)
         voice_samples.append(audio)
 
-# Generate speech
+print(f"Loaded {len(voice_samples)} voice samples")
+
+# Generate speech with quality settings based on user choice
 print(f"Text: {args.text}")
+
+# Choose preset based on quality argument
+preset = "high_quality" if args.quality == "high" else "standard" if args.quality == "medium" else "fast"
+print(f"Generating speech with {preset} preset...")
+
 try:
-    # Try with specified preset first
-    print(f"Generating with {args.preset} preset...")
+    # Use preset
     gen_audio = tts.tts_with_preset(
         text=args.text,
         voice_samples=voice_samples,
-        preset=args.preset
+        preset=preset
     )
 except Exception as e:
-    print(f"Preset {args.preset} failed: {e}")
-    print("Trying default approach...")
+    print(f"Preset {preset} failed: {e}")
+    print("Falling back to manual configuration...")
+    
+    # Set parameters based on quality level
+    if args.quality == "high":
+        k_val = 6
+        diffusion_iter = 200
+        ar_samples = 256
+    elif args.quality == "medium":
+        k_val = 4
+        diffusion_iter = 100
+        ar_samples = 128
+    else:  # fast
+        k_val = 2
+        diffusion_iter = 50
+        ar_samples = 64
+    
     try:
-        # Fall back to default
         gen_audio = tts.tts(
             text=args.text,
-            voice_samples=voice_samples
+            voice_samples=voice_samples,
+            k=k_val,
+            diffusion_iterations=diffusion_iter,
+            num_autoregressive_samples=ar_samples
         )
     except Exception as e2:
-        print(f"Default approach failed: {e2}")
-        print("Trying simpler approach...")
+        print(f"Manual configuration failed: {e2}")
+        print("Trying basic approach...")
         try:
             gen_audio = tts.tts(
                 text=args.text,
-                voice_samples=voice_samples,
-                k=1,
-                use_deterministic_seed=True
+                voice_samples=voice_samples
             )
         except Exception as e3:
             print(f"All attempts failed. Error: {e3}")
             exit(1)
 
+# Handle different possible shapes
+print(f"Generated audio shape: {gen_audio.shape}")
+if len(gen_audio.shape) == 3:
+    gen_audio_np = gen_audio.squeeze().cpu().numpy()
+elif len(gen_audio.shape) == 2:
+    gen_audio_np = gen_audio.squeeze(0).cpu().numpy()
+else:
+    gen_audio_np = gen_audio.cpu().numpy()
+print(f"Reshaped audio shape: {gen_audio_np.shape}")
+
 # Save the generated audio
-sf.write(args.output, gen_audio.cpu().numpy(), 24000)
+sf.write(args.output, gen_audio_np, 24000)
 print(f"Generated speech saved to {args.output}")
+
+print("\\nTips for best results:")
+print("1. For longer texts, split into natural paragraphs")
+print("2. Add punctuation for better phrasing and pauses")
+print("3. Run on a system with a good GPU for faster generation")
+print("4. Try different quality settings if you encounter issues")
 """)
-print("Sample generation script saved to generate_speech.py")
+print("Speech generation script saved to generate_speech.py")

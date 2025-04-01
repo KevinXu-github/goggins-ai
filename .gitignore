@@ -1,2 +1,5 @@
 .env
 node_modules/
+assets/
+voice_samples/
+output/
