@@ -170,3 +170,376 @@ function createSystemPrompt(intensity) {
             return basePrompt + " Focus on mental toughness, accountability, and pushing beyond comfort zones.";
     }
 }
+
+// Add these event listeners at the end of your app.js file
+
+// Initialize the app when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize voice chat features
+    if (typeof voiceChat !== 'undefined') {
+        voiceChat.init();
+        voiceChat.setupEventListeners();
+    }
+    
+    // Load settings from localStorage
+    loadSettings();
+    
+    // Set a random mood phrase on startup
+    updateMoodPhrase();
+    
+    // Get API key from server
+    getAPIKey();
+    
+    // Set up event listeners for the chat functionality
+    setupEventListeners();
+});
+
+// Set up main event listeners
+function setupEventListeners() {
+    // Send message on button click
+    sendBtn.addEventListener('click', sendMessage);
+    
+    // Send message on Enter key press
+    userInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+    
+    // Clear chat history
+    clearBtn.addEventListener('click', clearChat);
+    
+    // Settings panel open/close
+    settingsBtn.addEventListener('click', openSettings);
+    closeSettingsBtn.addEventListener('click', closeSettings);
+    settingsOverlay.addEventListener('click', closeSettings);
+    
+    // Save and reset settings
+    saveSettingsBtn.addEventListener('click', saveSettings);
+    resetSettingsBtn.addEventListener('click', resetSettings);
+    
+    // Color theme selection
+    colorOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            const color = this.getAttribute('data-color');
+            setActiveColor(color);
+        });
+    });
+    
+    // Initialize active color
+    setActiveColor(chatbotState.settings.primaryColor);
+    
+    console.log("Event listeners initialized");
+}
+
+// Send a message to the chatbot
+async function sendMessage() {
+    const message = userInput.value.trim();
+    
+    if (message === '') return;
+    
+    // Add user message to chat
+    addMessageToChat('user', message);
+    
+    // Clear input field
+    userInput.value = '';
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+    try {
+        // Get response from OpenAI
+        const response = await getOpenAIResponse(message);
+        
+        // Remove typing indicator
+        hideTypingIndicator();
+        
+        // Add AI response to chat
+        addMessageToChat('ai', response);
+        
+        // Generate and play voice if enabled
+        if (voiceChat && voiceChat.settings.enabled) {
+            const audioUrl = await voiceChat.textToSpeech(response);
+            if (audioUrl) {
+                voiceChat.playAudio(audioUrl);
+            }
+        }
+    } catch (error) {
+        console.error("Error getting response:", error);
+        hideTypingIndicator();
+        addMessageToChat('ai', "Sorry, I couldn't process your request. Please make sure your API key is set up correctly.");
+    }
+}
+
+// Add a message to the chat display
+function addMessageToChat(sender, text, timestamp = null) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = sender === 'user' ? 'user-message' : 'ai-message';
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.textContent = text;
+    
+    messageDiv.appendChild(messageContent);
+    
+    // Add timestamp if enabled
+    if (chatbotState.settings.showTimestamps || timestamp) {
+        const timeString = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const timestampDiv = document.createElement('div');
+        timestampDiv.className = 'message-timestamp';
+        timestampDiv.textContent = timeString;
+        messageContent.appendChild(timestampDiv);
+    }
+    
+    // Add play button for AI messages if voice is enabled
+    if (sender === 'ai' && voiceChat && voiceChat.settings.enabled) {
+        const playButton = voiceChat.createPlayButton(text);
+        messageContent.appendChild(playButton);
+        messageDiv.classList.add('has-audio');
+    }
+    
+    // Add to chat
+    chatBox.appendChild(messageDiv);
+    
+    // Save to history
+    chatbotState.messages.push({
+        sender: sender,
+        text: text,
+        timestamp: new Date().toISOString()
+    });
+    
+    // Scroll to bottom
+    chatBox.scrollTop = chatBox.scrollHeight;
+    
+    // Save chat history to localStorage
+    saveChatHistory();
+}
+
+// Show typing indicator
+function showTypingIndicator() {
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'ai-message typing-indicator-container';
+    typingDiv.id = 'typing-indicator';
+    
+    const typingContent = document.createElement('div');
+    typingContent.className = 'typing-indicator';
+    
+    typingContent.innerHTML = `
+        <span></span>
+        <span></span>
+        <span></span>
+    `;
+    
+    typingDiv.appendChild(typingContent);
+    chatBox.appendChild(typingDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Hide typing indicator
+function hideTypingIndicator() {
+    const typingIndicator = document.getElementById('typing-indicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+}
+
+// Get API key from server
+async function getAPIKey() {
+    try {
+        const response = await fetch('/api-key');
+        if (!response.ok) {
+            throw new Error('Failed to get API key');
+        }
+        
+        const data = await response.json();
+        if (data.key) {
+            chatbotState.settings.apiKey = data.key;
+            console.log("API key loaded successfully");
+        } else {
+            console.error("No API key received from server");
+        }
+    } catch (error) {
+        console.error("Error getting API key:", error);
+    }
+}
+
+// Update mood phrase
+function updateMoodPhrase() {
+    const mood = chatbotState.settings.intensity;
+    const phrases = moodPhrases[mood] || moodPhrases.challenging;
+    const randomIndex = Math.floor(Math.random() * phrases.length);
+    const phrase = phrases[randomIndex];
+    
+    moodText.textContent = phrase;
+}
+
+// Load settings from localStorage
+function loadSettings() {
+    const savedSettings = localStorage.getItem('gogginsSettings');
+    if (savedSettings) {
+        try {
+            const parsed = JSON.parse(savedSettings);
+            chatbotState.settings = { ...chatbotState.settings, ...parsed };
+            
+            // Apply settings to UI
+            chatbotNameElement.textContent = chatbotState.settings.name;
+            chatbotNameInput.value = chatbotState.settings.name;
+            showTimestampsToggle.checked = chatbotState.settings.showTimestamps;
+            darkModeToggle.checked = chatbotState.settings.darkMode;
+            intensitySelect.value = chatbotState.settings.intensity;
+            
+            // Apply dark mode
+            if (chatbotState.settings.darkMode) {
+                document.body.classList.add('dark-mode');
+            }
+            
+            // Set active color
+            setActiveColor(chatbotState.settings.primaryColor);
+            
+            // Update mood based on intensity
+            chatbotState.mood = chatbotState.settings.intensity;
+            updateMoodPhrase();
+            
+            console.log("Settings loaded:", chatbotState.settings);
+        } catch (e) {
+            console.error("Error loading settings:", e);
+        }
+    }
+    
+    // Load chat history
+    loadChatHistory();
+}
+
+// Save settings to localStorage
+function saveSettings() {
+    // Get values from UI
+    chatbotState.settings.name = chatbotNameInput.value;
+    chatbotState.settings.showTimestamps = showTimestampsToggle.checked;
+    chatbotState.settings.darkMode = darkModeToggle.checked;
+    chatbotState.settings.intensity = intensitySelect.value;
+    
+    // Save to localStorage
+    localStorage.setItem('gogginsSettings', JSON.stringify(chatbotState.settings));
+    
+    // Apply settings
+    chatbotNameElement.textContent = chatbotState.settings.name;
+    
+    if (chatbotState.settings.darkMode) {
+        document.body.classList.add('dark-mode');
+    } else {
+        document.body.classList.remove('dark-mode');
+    }
+    
+    // Update mood based on intensity
+    chatbotState.mood = chatbotState.settings.intensity;
+    updateMoodPhrase();
+    
+    // Update conversation context for OpenAI
+    chatbotState.conversation = [];
+    
+    console.log("Settings saved:", chatbotState.settings);
+    
+    // Close settings panel
+    closeSettings();
+}
+
+// Reset settings to defaults
+function resetSettings() {
+    chatbotState.settings = { ...defaultSettings };
+    
+    // Update UI
+    chatbotNameInput.value = defaultSettings.name;
+    showTimestampsToggle.checked = defaultSettings.showTimestamps;
+    darkModeToggle.checked = defaultSettings.darkMode;
+    intensitySelect.value = defaultSettings.intensity;
+    
+    // Set active color
+    setActiveColor(defaultSettings.primaryColor);
+    
+    console.log("Settings reset to defaults");
+}
+
+// Set active color theme
+function setActiveColor(color) {
+    document.documentElement.style.setProperty('--primary-color', color);
+    document.documentElement.style.setProperty('--primary-hover', adjustColorBrightness(color, 20));
+    document.documentElement.style.setProperty('--primary-light', adjustColorBrightness(color, 30));
+    
+    // Update active color in settings
+    colorOptions.forEach(option => {
+        if (option.getAttribute('data-color') === color) {
+            option.classList.add('active');
+        } else {
+            option.classList.remove('active');
+        }
+    });
+    
+    // Save the color to settings
+    chatbotState.settings.primaryColor = color;
+}
+
+// Adjust color brightness (simple helper)
+function adjustColorBrightness(hex, percent) {
+    // Convert hex to rgb
+    let r = parseInt(hex.substr(1, 2), 16);
+    let g = parseInt(hex.substr(3, 2), 16);
+    let b = parseInt(hex.substr(5, 2), 16);
+    
+    // Adjust brightness
+    r = Math.min(255, r + percent);
+    g = Math.min(255, g + percent);
+    b = Math.min(255, b + percent);
+    
+    // Convert back to hex
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+// Open settings panel
+function openSettings() {
+    settingsPanel.classList.add('active');
+    settingsOverlay.classList.add('active');
+}
+
+// Close settings panel
+function closeSettings() {
+    settingsPanel.classList.remove('active');
+    settingsOverlay.classList.remove('active');
+}
+
+// Clear chat history
+function clearChat() {
+    chatBox.innerHTML = '';
+    chatbotState.messages = [];
+    chatbotState.conversation = [];
+    
+    // Save empty chat history to localStorage
+    saveChatHistory();
+    
+    console.log("Chat history cleared");
+}
+
+// Save chat history to localStorage
+function saveChatHistory() {
+    localStorage.setItem('gogginsChat', JSON.stringify(chatbotState.messages));
+}
+
+// Load chat history from localStorage
+function loadChatHistory() {
+    const savedChat = localStorage.getItem('gogginsChat');
+    if (savedChat) {
+        try {
+            const messages = JSON.parse(savedChat);
+            chatbotState.messages = messages;
+            
+            // Add messages to chat
+            chatBox.innerHTML = '';
+            messages.forEach(msg => {
+                addMessageToChat(msg.sender, msg.text, new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            });
+            
+            console.log("Chat history loaded:", messages.length, "messages");
+        } catch (e) {
+            console.error("Error loading chat history:", e);
+        }
+    }
+}
