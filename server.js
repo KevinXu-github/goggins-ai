@@ -1,6 +1,8 @@
 const express = require('express');
 const path = require('path');
 const axios = require('axios');
+const { spawn } = require('child_process'); // Added for Python script execution
+const fs = require('fs'); // Added for file system operations
 require('dotenv').config();
 
 const app = express();
@@ -103,6 +105,93 @@ app.get('/api/test-key', (req, res) => {
   }
 });
 
+// Endpoint for generating speech with Goggins voice
+app.post('/api/generate-speech', async (req, res) => {
+  console.log('Generating speech for Goggins bot response');
+  
+  const { text, output = 'speech_output.wav' } = req.body;
+  
+  if (!text) {
+    return res.status(400).json({ error: 'Text is required for speech generation' });
+  }
+  
+  // Make sure output directory exists
+  const outputDir = path.join(__dirname, 'output');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir);
+    console.log(`Created output directory: ${outputDir}`);
+  }
+  
+  // Create a safe filename
+  const safeFilename = output.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const outputFilename = safeFilename.endsWith('.wav') ? safeFilename : `${safeFilename}.wav`;
+  const outputPath = path.join(outputDir, outputFilename);
+  
+  console.log(`Generating speech for text: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+  console.log(`Output file: ${outputPath}`);
+  
+  try {
+    // Run Python script to generate speech
+    const pythonProcess = spawn('python', [
+      'generate_speech.py',
+      '--text', text,
+      '--output', outputFilename,
+      '--quality', 'high'
+    ]);
+    
+    let stdoutData = '';
+    let stderrData = '';
+    
+    // Collect standard output
+    pythonProcess.stdout.on('data', (data) => {
+      stdoutData += data.toString();
+      console.log(`Python script output: ${data}`);
+    });
+    
+    // Collect error output
+    pythonProcess.stderr.on('data', (data) => {
+      stderrData += data.toString();
+      console.error(`Python script error: ${data}`);
+    });
+    
+    // Process completion
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python process exited with code ${code}`);
+        return res.status(500).json({
+          error: 'Speech generation failed',
+          details: stderrData || 'Unknown error'
+        });
+      }
+      
+      // Verify the file was created
+      if (fs.existsSync(outputPath)) {
+        console.log(`Speech generated successfully: ${outputFilename}`);
+        res.json({
+          success: true,
+          audioUrl: `/output/${outputFilename}`
+        });
+      } else {
+        console.error(`Output file was not created: ${outputPath}`);
+        res.status(500).json({
+          error: 'Output file not created',
+          details: stdoutData + stderrData
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error running Python script:', error.message);
+    res.status(500).json({
+      error: 'Failed to run speech generation script',
+      details: error.message
+    });
+  }
+});
+
+// Make sure to serve files from the output directory
+app.use('/output', express.static(path.join(__dirname, 'output')));
+
+// Start the server (this should be at the end of the file)
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`OpenAI API Key ${process.env.OPENAI_API_KEY ? 'is' : 'is NOT'} available`);

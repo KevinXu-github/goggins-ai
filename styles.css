@@ -601,3 +601,59 @@ input:checked + .toggle-slider:before {
         opacity: 0.4;
     }
 }
+
+/* Voice Status Indicators */
+.voice-status {
+    display: flex;
+    align-items: center;
+    font-size: 0.8rem;
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.9);
+    background-color: rgba(0, 0, 0, 0.25);
+    transition: all 0.3s ease;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.voice-status i {
+    margin-right: 6px;
+}
+
+.voice-status.generating {
+    background-color: rgba(255, 59, 37, 0.15);
+    border-left: 3px solid #ff3b25;
+}
+
+.voice-status.ready {
+    background-color: rgba(0, 128, 0, 0.15);
+    border-left: 3px solid #00aa00;
+}
+
+.voice-status.playing {
+    background-color: rgba(0, 100, 255, 0.15);
+    border-left: 3px solid #0064ff;
+    animation: pulse 1.5s infinite;
+}
+
+.voice-status.complete {
+    background-color: rgba(0, 128, 0, 0.15);
+    border-left: 3px solid #00aa00;
+}
+
+.voice-status.error {
+    background-color: rgba(255, 0, 0, 0.15);
+    border-left: 3px solid #ff0000;
+}
+
+.voice-status.fade-out {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+/* Audio player visibility during playback */
+#audio-player:not([src=""]) {
+    display: block;
+    width: 0;
+    height: 0;
+}

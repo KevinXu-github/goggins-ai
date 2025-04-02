@@ -43,7 +43,9 @@ const chatbotState = {
     lastResponseTime: Date.now(),
     messages: [], // Store chat history
     settings: { ...defaultSettings }, // Clone default settings
-    conversation: [] // Store the OpenAI conversation history
+    conversation: [], // Store the OpenAI conversation history
+    voiceGenerating: false, // Track voice generation status
+    lastMessageElement: null // Track the last message element for status updates
 };
 
 // Mood Text
@@ -86,7 +88,7 @@ const moodPhrases = {
     ]
 };
 
-// OpenAI API Integration
+// OpenAI API Integration with concise response setting
 async function getOpenAIResponse(message) {
     try {
         console.log("Getting OpenAI response for message:", message);
@@ -96,7 +98,7 @@ async function getOpenAIResponse(message) {
             throw new Error("No API key available");
         }
 
-        // Create system message based on intensity
+        // Create system message based on intensity with added brevity instructions
         const systemMessage = createSystemPrompt(chatbotState.settings.intensity);
 
         // Clone the conversation history to avoid mutation
@@ -122,7 +124,9 @@ async function getOpenAIResponse(message) {
                     ...conversation
                 ],
                 temperature: 0.7,
-                max_tokens: 256
+                max_tokens: 150, // Reduced from 256 to force shorter responses
+                presence_penalty: 0.6, // Added to discourage repetitive responses
+                frequency_penalty: 0.5 // Added to encourage diverse vocabulary
             })
         });
 
@@ -152,26 +156,24 @@ async function getOpenAIResponse(message) {
     }
 }
 
-// Create OpenAI system prompt based on intensity
+// Create OpenAI system prompt based on intensity with brevity instructions
 function createSystemPrompt(intensity) {
-    let basePrompt = "You are David Goggins, a former Navy SEAL, ultramarathon runner, and motivational speaker known for mental toughness and pushing beyond limits. Respond as David Goggins would, using his direct, no-excuses style and occasional profanity.";
+    let basePrompt = "You are David Goggins, a former Navy SEAL, ultramarathon runner, and motivational speaker known for mental toughness and pushing beyond limits. Respond as David Goggins would, using his direct, no-excuses style and occasional profanity. KEEP YOUR RESPONSES SHORT AND IMPACTFUL - NO MORE THAN 2-3 SENTENCES MAXIMUM. Be direct, blunt, and get straight to the point.";
     
     switch (intensity) {
         case 'challenging':
-            return basePrompt + " Be challenging but supportive, focusing on pushing people beyond their perceived limits. Use phrases like 'stay hard', 'embrace the suck', and 'callus your mind'. Remind people that discomfort is where growth happens.";
+            return basePrompt + " Be challenging but supportive, focusing on pushing people beyond their perceived limits. Use short, powerful phrases like 'stay hard', 'embrace the suck', and 'callus your mind'. Short, direct statements have more impact than lengthy explanations.";
         
         case 'reflective':
-            return basePrompt + " Be reflective and share personal stories and lessons from your journey. Talk about your transformation from overweight to ultramarathoner, or your SEAL training experiences. Connect these to the person's challenges.";
+            return basePrompt + " Be reflective but concise. Reference your personal transformation in just 1-2 short sentences. Don't over-explain. Connect these briefly to the person's challenges with direct, impactful statements.";
         
         case 'drill':
-            return basePrompt + " Act like a drill instructor - be loud (USE CAPS), intense, and in-your-face. Challenge excuses immediately. Be extremely direct and forceful. Call out weakness and demand action. Use short, powerful sentences.";
+            return basePrompt + " Act like a drill instructor - be loud (USE CAPS), intense, and in-your-face. Challenge excuses immediately. Be extremely direct and forceful. Call out weakness and demand action. Use very short, powerful sentences. NO EXPLANATIONS.";
         
         default:
-            return basePrompt + " Focus on mental toughness, accountability, and pushing beyond comfort zones.";
+            return basePrompt + " Focus on mental toughness, accountability, and pushing beyond comfort zones. Always be brief and impactful.";
     }
 }
-
-// Add these event listeners at the end of your app.js file
 
 // Initialize the app when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -192,6 +194,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set up event listeners for the chat functionality
     setupEventListeners();
+    
+    // Set up audio player event listeners
+    setupAudioPlayerEvents();
 });
 
 // Set up main event listeners
@@ -232,6 +237,24 @@ function setupEventListeners() {
     console.log("Event listeners initialized");
 }
 
+// Set up audio player event listeners
+function setupAudioPlayerEvents() {
+    audioPlayer.addEventListener('play', function() {
+        console.log('Audio playback started');
+        updateVoiceStatus('playing');
+    });
+    
+    audioPlayer.addEventListener('ended', function() {
+        console.log('Audio playback ended');
+        updateVoiceStatus('complete');
+    });
+    
+    audioPlayer.addEventListener('error', function() {
+        console.error('Audio playback error');
+        updateVoiceStatus('error');
+    });
+}
+
 // Send a message to the chatbot
 async function sendMessage() {
     const message = userInput.value.trim();
@@ -255,20 +278,119 @@ async function sendMessage() {
         hideTypingIndicator();
         
         // Add AI response to chat
-        addMessageToChat('ai', response);
+        const messageElement = addMessageToChat('ai', response);
         
-        // Generate and play voice if enabled
-        if (voiceChat && voiceChat.settings.enabled) {
-            const audioUrl = await voiceChat.textToSpeech(response);
-            if (audioUrl) {
-                voiceChat.playAudio(audioUrl);
-            }
+        // Store the message element for status updates
+        chatbotState.lastMessageElement = messageElement;
+        
+        // Automatically generate and play voice if enabled
+        if (chatbotState.settings.voiceEnabled) {
+            generateAndPlayGogginsSpeech(response);
         }
     } catch (error) {
         console.error("Error getting response:", error);
         hideTypingIndicator();
         addMessageToChat('ai', "Sorry, I couldn't process your request. Please make sure your API key is set up correctly.");
     }
+}
+
+// Generate and play Goggins voice
+async function generateAndPlayGogginsSpeech(text) {
+    try {
+        // Set voice generation status
+        chatbotState.voiceGenerating = true;
+        updateVoiceStatus('generating');
+        
+        // Create a unique filename based on timestamp
+        const timestamp = Date.now();
+        const outputFilename = `goggins_${timestamp}.wav`;
+        
+        // Call the server endpoint to generate speech
+        const response = await fetch('/api/generate-speech', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                output: outputFilename
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error("Failed to generate speech");
+        }
+        
+        // Get the URL of the generated audio file
+        const data = await response.json();
+        const audioUrl = data.audioUrl;
+        
+        // Set voice generation status
+        chatbotState.voiceGenerating = false;
+        updateVoiceStatus('ready');
+        
+        // Play the audio
+        const audioPlayer = document.getElementById('audio-player');
+        audioPlayer.src = audioUrl;
+        audioPlayer.play();
+        
+        return audioUrl;
+    } catch (error) {
+        console.error("Error generating speech:", error);
+        chatbotState.voiceGenerating = false;
+        updateVoiceStatus('error');
+        return null;
+    }
+}
+
+// Update voice status on message element
+function updateVoiceStatus(status) {
+    if (!chatbotState.lastMessageElement) return;
+    
+    // Remove any existing status elements
+    const existingStatus = chatbotState.lastMessageElement.querySelector('.voice-status');
+    if (existingStatus) {
+        existingStatus.remove();
+    }
+    
+    // Create new status element
+    const statusElement = document.createElement('div');
+    statusElement.className = 'voice-status';
+    
+    // Set appropriate status message
+    switch (status) {
+        case 'generating':
+            statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating Goggins voice...';
+            statusElement.classList.add('generating');
+            break;
+        case 'ready':
+            statusElement.innerHTML = '<i class="fas fa-check"></i> Voice generated';
+            statusElement.classList.add('ready');
+            // Automatically fade out after 3 seconds
+            setTimeout(() => {
+                statusElement.classList.add('fade-out');
+            }, 3000);
+            break;
+        case 'playing':
+            statusElement.innerHTML = '<i class="fas fa-volume-up"></i> Playing Goggins voice';
+            statusElement.classList.add('playing');
+            break;
+        case 'complete':
+            statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Complete';
+            statusElement.classList.add('complete');
+            // Automatically fade out after 2 seconds
+            setTimeout(() => {
+                statusElement.classList.add('fade-out');
+            }, 2000);
+            break;
+        case 'error':
+            statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Voice generation failed';
+            statusElement.classList.add('error');
+            break;
+    }
+    
+    // Add status element to message
+    chatbotState.lastMessageElement.appendChild(statusElement);
 }
 
 // Add a message to the chat display
@@ -313,6 +435,9 @@ function addMessageToChat(sender, text, timestamp = null) {
     
     // Save chat history to localStorage
     saveChatHistory();
+    
+    // Return the message element for status updates
+    return messageDiv;
 }
 
 // Show typing indicator
