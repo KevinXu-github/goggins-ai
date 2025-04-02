@@ -316,6 +316,7 @@ body {
     padding: 20px;
     max-height: 70vh;
     overflow-y: auto;
+    background-color: #ffffff;
 }
 
 .setting-group {
@@ -326,7 +327,7 @@ body {
     display: block;
     margin-bottom: 8px;
     font-weight: 700;
-    color: var(--foreground-color);
+    color: #000000; /* Black text color */
     text-transform: uppercase;
     font-size: 0.9rem;
 }
@@ -339,13 +340,18 @@ body {
     border-radius: 8px;
     font-size: 0.95rem;
     transition: border-color 0.3s;
-    color: black; /* Fixed color */
+    color: #000000; /* Black text color */
 }
 
 .setting-group input[type="text"]:focus,
 .setting-group select:focus {
     border-color: var(--primary-color);
     outline: none;
+}
+
+/* Make dropdown text in select elements black */
+.setting-group select option {
+    color: #000000;
 }
 
 /* Color Options */
@@ -377,6 +383,11 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+/* Fix toggle labels */
+.toggle-group label:not(.toggle-switch) {
+    color: #000000; /* Black text color */
 }
 
 .toggle-switch {
@@ -521,20 +532,23 @@ input:checked + .toggle-slider:before {
 
 /* Play button that appears on messages */
 .play-voice-btn {
-    background: none;
+    background: rgba(255, 59, 37, 0.2);
     border: none;
     color: white;
     cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.3s;
-    font-size: 1rem;
+    opacity: 0.8;
+    transition: all 0.3s;
+    font-size: 0.85rem;
     display: flex;
     align-items: center;
-    margin-top: 5px;
+    margin-top: 8px;
+    padding: 5px 10px;
+    border-radius: 4px;
 }
 
 .play-voice-btn:hover {
     opacity: 1;
+    background: rgba(255, 59, 37, 0.3);
 }
 
 .play-voice-btn i {
@@ -656,4 +670,37 @@ input:checked + .toggle-slider:before {
     display: block;
     width: 0;
     height: 0;
+}
+
+/* Speech Generating Indicator */
+.speech-generating-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease-out;
+    border-left: 4px solid #ff3b25;
+}
+
+.speech-generating-indicator i {
+    margin-right: 10px;
+    color: #ff3b25;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
