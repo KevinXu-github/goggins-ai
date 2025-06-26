@@ -16,6 +16,9 @@
     --container-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     --border-color: #eee;
     --input-border: #ddd;
+    --text-color: #333;
+    --settings-bg: white;
+    --settings-text: #333;
 }
 
 /* Dark Mode Variables - Default for Goggins Bot */
@@ -33,6 +36,9 @@
     --container-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     --border-color: #444;
     --input-border: #555;
+    --text-color: #f0f0f0;
+    --settings-bg: #2a2a2a;
+    --settings-text: #f0f0f0;
 }
 
 /* Reset and Base Styles */
@@ -58,7 +64,7 @@ body {
 .chat-container {
     width: 100%;
     max-width: 400px;
-    background-color: white;
+    background-color: var(--settings-bg);
     border-radius: 15px;
     box-shadow: var(--container-shadow);
     overflow: hidden;
@@ -158,7 +164,7 @@ body {
 }
 
 .message-content {
-    max-width: 80%; /* Increased from 70% since we don't have avatars */
+    max-width: 80%;
     padding: 10px 15px;
     border-radius: 18px;
     font-size: 0.95rem;
@@ -202,11 +208,11 @@ body {
     outline: none;
     transition: border-color 0.3s;
     background-color: white;
-    color: black; /* Fixed text color to black */
+    color: #333 !important; /* Force black text in input */
 }
 
 .chat-input input::placeholder {
-    color: #777; /* Better placeholder visibility */
+    color: #777 !important; /* Better placeholder visibility */
 }
 
 .chat-input input:focus {
@@ -244,7 +250,8 @@ body {
     transform: translate(-50%, -50%) scale(0.9);
     width: 90%;
     max-width: 400px;
-    background-color: white;
+    background-color: var(--settings-bg);
+    color: var(--settings-text);
     border-radius: 15px;
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
     z-index: 1000;
@@ -316,6 +323,8 @@ body {
     padding: 20px;
     max-height: 70vh;
     overflow-y: auto;
+    background-color: var(--settings-bg);
+    color: var(--settings-text);
 }
 
 .setting-group {
@@ -326,7 +335,7 @@ body {
     display: block;
     margin-bottom: 8px;
     font-weight: 700;
-    color: var(--foreground-color);
+    color: var(--settings-text) !important; /* Force proper text color */
     text-transform: uppercase;
     font-size: 0.9rem;
 }
@@ -339,7 +348,8 @@ body {
     border-radius: 8px;
     font-size: 0.95rem;
     transition: border-color 0.3s;
-    color: black; /* Fixed color */
+    background-color: white !important; /* Force white background */
+    color: #333 !important; /* Force black text */
 }
 
 .setting-group input[type="text"]:focus,
@@ -368,7 +378,7 @@ body {
 }
 
 .color-option.active {
-    border: 3px solid #fff;
+    border: 3px solid #ff3b25 !important; /* Use accent color for active state */
     transform: scale(1.1);
 }
 
@@ -377,6 +387,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.toggle-group label:first-child {
+    color: var(--settings-text) !important; /* Ensure toggle labels are visible */
 }
 
 .toggle-switch {
@@ -600,4 +614,24 @@ input:checked + .toggle-slider:before {
         transform: translateY(0px);
         opacity: 0.4;
     }
+}
+
+/* Dark mode specific overrides to ensure proper contrast */
+.dark-mode .setting-group input[type="text"],
+.dark-mode .setting-group select {
+    background-color: #3a3a3a !important;
+    color: #f0f0f0 !important;
+    border-color: #555 !important;
+}
+
+.dark-mode .setting-group input[type="text"]::placeholder {
+    color: #aaa !important;
+}
+
+.dark-mode .color-option {
+    border-color: #555;
+}
+
+.dark-mode .toggle-slider {
+    background-color: #555;
 }

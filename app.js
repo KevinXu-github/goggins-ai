@@ -218,19 +218,27 @@ function setupEventListeners() {
     saveSettingsBtn.addEventListener('click', saveSettings);
     resetSettingsBtn.addEventListener('click', resetSettings);
     
-    // Color theme selection
+    // Color theme selection with improved handling
     colorOptions.forEach(option => {
         option.addEventListener('click', function() {
             const color = this.getAttribute('data-color');
+            console.log("Color option clicked:", color);
             setActiveColor(color);
+            
+            // Apply immediately to give visual feedback
+            document.documentElement.style.setProperty('--primary-color', color);
+            document.documentElement.style.setProperty('--primary-hover', adjustColorBrightness(color, 20));
+            document.documentElement.style.setProperty('--primary-light', adjustColorBrightness(color, 30));
         });
     });
     
-    // Initialize active color
-    setActiveColor(chatbotState.settings.primaryColor);
+    // Initialize active color on startup
+    const initialColor = chatbotState.settings.primaryColor || '#1a1a1a';
+    setActiveColor(initialColor);
     
-    console.log("Event listeners initialized");
+    console.log("Event listeners initialized with color support");
 }
+
 
 // Send a message to the chatbot
 async function sendMessage() {
@@ -391,10 +399,14 @@ function loadSettings() {
             // Apply dark mode
             if (chatbotState.settings.darkMode) {
                 document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
             }
             
-            // Set active color
-            setActiveColor(chatbotState.settings.primaryColor);
+            // Set active color and apply immediately
+            if (chatbotState.settings.primaryColor) {
+                setActiveColor(chatbotState.settings.primaryColor);
+            }
             
             // Update mood based on intensity
             chatbotState.mood = chatbotState.settings.intensity;
@@ -409,6 +421,7 @@ function loadSettings() {
     // Load chat history
     loadChatHistory();
 }
+
 
 // Save settings to localStorage
 function saveSettings() {
@@ -430,6 +443,11 @@ function saveSettings() {
         document.body.classList.remove('dark-mode');
     }
     
+    // Reapply color theme
+    if (chatbotState.settings.primaryColor) {
+        setActiveColor(chatbotState.settings.primaryColor);
+    }
+    
     // Update mood based on intensity
     chatbotState.mood = chatbotState.settings.intensity;
     updateMoodPhrase();
@@ -442,6 +460,7 @@ function saveSettings() {
     // Close settings panel
     closeSettings();
 }
+
 
 // Reset settings to defaults
 function resetSettings() {
@@ -461,6 +480,9 @@ function resetSettings() {
 
 // Set active color theme
 function setActiveColor(color) {
+    console.log("Setting active color:", color);
+    
+    // Set CSS custom properties
     document.documentElement.style.setProperty('--primary-color', color);
     document.documentElement.style.setProperty('--primary-hover', adjustColorBrightness(color, 20));
     document.documentElement.style.setProperty('--primary-light', adjustColorBrightness(color, 30));
@@ -476,22 +498,33 @@ function setActiveColor(color) {
     
     // Save the color to settings
     chatbotState.settings.primaryColor = color;
+    
+    console.log("Color updated successfully");
 }
+
 
 // Adjust color brightness (simple helper)
 function adjustColorBrightness(hex, percent) {
+    // Remove # if present
+    hex = hex.replace('#', '');
+    
     // Convert hex to rgb
-    let r = parseInt(hex.substr(1, 2), 16);
-    let g = parseInt(hex.substr(3, 2), 16);
-    let b = parseInt(hex.substr(5, 2), 16);
+    let r = parseInt(hex.substr(0, 2), 16);
+    let g = parseInt(hex.substr(2, 2), 16);
+    let b = parseInt(hex.substr(4, 2), 16);
     
     // Adjust brightness
-    r = Math.min(255, r + percent);
-    g = Math.min(255, g + percent);
-    b = Math.min(255, b + percent);
+    r = Math.min(255, Math.max(0, r + percent));
+    g = Math.min(255, Math.max(0, g + percent));
+    b = Math.min(255, Math.max(0, b + percent));
     
     // Convert back to hex
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    const toHex = (c) => {
+        const hex = c.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    };
+    
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
 // Open settings panel
