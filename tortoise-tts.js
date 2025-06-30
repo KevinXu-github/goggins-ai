@@ -1,4 +1,4 @@
-// Add this to a new file named tortoise-tts.js
+// tortoise-tts.js with proper timeout handling
 
 const express = require('express');
 const { spawn } = require('child_process');
@@ -25,8 +25,8 @@ module.exports = function(app) {
       
       // Generate a unique hash for this text to use as a cache key
       const textHash = crypto.createHash('md5').update(text).digest('hex');
-      const voiceStr = voice || 'goggins'; // Default to Goggins voice
-      const presetStr = preset || 'fast'; // Options: ultra_fast, fast, standard, high_quality
+      const voiceStr = voice || 'goggins';
+      const presetStr = preset || 'fast';
       
       const outputFilename = `${textHash}_${voiceStr}_${presetStr}.wav`;
       const outputPath = path.join(audioDir, outputFilename);
@@ -37,23 +37,63 @@ module.exports = function(app) {
         return res.sendFile(outputPath);
       }
       
+      console.log(`Tortoise-TTS request received: ${text.substring(0, 30)}...`);
       console.log(`Generating speech with Tortoise-TTS: "${text.substring(0, 30)}..."`);
       console.log(`Voice: ${voiceStr}, Preset: ${presetStr}`);
       
       // Call Tortoise-TTS Python script
-      // Adjust the path to your Tortoise-TTS installation
       const tortoisePath = process.env.TORTOISE_PATH || '/path/to/tortoise-tts';
       
-      // Spawn a Python process to run Tortoise-TTS
+      // Set timeout based on preset (in milliseconds)
+      const timeouts = {
+        'ultra_fast': 5 * 60 * 1000,    // 5 minutes
+        'fast': 10 * 60 * 1000,         // 10 minutes  
+        'standard': 15 * 60 * 1000,     // 15 minutes
+        'high_quality': 20 * 60 * 1000  // 20 minutes
+      };
+      
+      const timeoutMs = timeouts[presetStr] || 10 * 60 * 1000; // Default 10 minutes
+      console.log(`Setting timeout to: ${timeoutMs / 1000} seconds`);
+      
+      // Spawn Python process
       const pythonProcess = spawn('python', [
         path.join(tortoisePath, 'tts.py'),
         '--text', text,
         '--voice', voiceStr,
         '--preset', presetStr,
         '--output_path', outputPath
-      ]);
+      ], {
+        // Add process options for better handling
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: false
+      });
       
       let pythonError = '';
+      let processCompleted = false;
+      let responseAlreadySent = false;
+      
+      // Set up timeout
+      const timeoutHandle = setTimeout(() => {
+        if (!processCompleted && !responseAlreadySent) {
+          console.log(`Tortoise-TTS generation timeout after ${timeoutMs / 1000} seconds - killing process`);
+          
+          // Kill the process
+          pythonProcess.kill('SIGTERM');
+          
+          // Try SIGKILL if SIGTERM doesn't work
+          setTimeout(() => {
+            if (!processCompleted) {
+              pythonProcess.kill('SIGKILL');
+            }
+          }, 5000);
+          
+          responseAlreadySent = true;
+          return res.status(408).json({ 
+            error: 'TTS generation timeout',
+            message: `Process exceeded ${timeoutMs / 1000} second limit`
+          });
+        }
+      }, timeoutMs);
       
       pythonProcess.stderr.on('data', (data) => {
         pythonError += data.toString();
@@ -65,60 +105,150 @@ module.exports = function(app) {
       });
       
       pythonProcess.on('close', (code) => {
+        processCompleted = true;
+        clearTimeout(timeoutHandle);
+        
+        console.log(`Tortoise-TTS process closed with code: ${code}`);
+        
+        if (responseAlreadySent) {
+          console.log('Response already sent, ignoring duplicate response attempt');
+          return;
+        }
+        
         if (code !== 0) {
-          console.error(`Tortoise-TTS process exited with code ${code}`);
+          console.error(`Tortoise-TTS process failed with code ${code}`);
           console.error(pythonError);
+          responseAlreadySent = true;
           return res.status(500).json({ 
             error: 'Failed to generate speech', 
-            details: pythonError
+            details: pythonError,
+            exitCode: code
           });
         }
         
         // Check if file was created
         if (fs.existsSync(outputPath)) {
           console.log(`Successfully generated speech: ${outputFilename}`);
+          responseAlreadySent = true;
           return res.sendFile(outputPath);
         } else {
           console.error('Tortoise-TTS did not generate an output file');
+          responseAlreadySent = true;
           return res.status(500).json({ error: 'Failed to generate speech file' });
+        }
+      });
+      
+      pythonProcess.on('error', (error) => {
+        processCompleted = true;
+        clearTimeout(timeoutHandle);
+        
+        if (!responseAlreadySent) {
+          console.error('Python process error:', error);
+          responseAlreadySent = true;
+          return res.status(500).json({ 
+            error: 'Failed to start TTS process',
+            details: error.message
+          });
         }
       });
       
     } catch (error) {
       console.error('Error with Tortoise-TTS:', error);
-      res.status(500).json({ 
-        error: 'Failed to process TTS request',
-        details: error.message
-      });
+      if (!responseAlreadySent) {
+        res.status(500).json({ 
+          error: 'Failed to process TTS request',
+          details: error.message
+        });
+      }
     }
   });
-  
-  // Add to server.js:
-  // const tortoiseTTS = require('./tortoise-tts');
-  // tortoiseTTS(app);
   
   console.log('Tortoise-TTS endpoints registered');
 };
 
 // ----------------------------------------------------
-// FRONT-END IMPLEMENTATION
-// Add this to your voice-chat.js file
+// FRONT-END IMPLEMENTATION (Updated)
 // ----------------------------------------------------
 
-// Extend the voiceChat object with Tortoise-TTS functionality
+// Extend the voiceChat object with improved Tortoise-TTS functionality
 Object.assign(voiceChat, {
   // Configuration for Tortoise-TTS
   tortoiseConfig: {
-    enabled: true,                 // Toggle Tortoise-TTS on/off
-    voiceName: 'goggins',          // The voice model you trained
-    preset: 'fast',                // Voice generation quality preset
-    useForAll: true,               // Use for all responses
-    fallbackToDefault: true        // Fallback to OpenAI voices if Tortoise fails
+    enabled: true,
+    voiceName: 'goggins',
+    preset: 'fast',
+    useForAll: true,
+    fallbackToDefault: true,
+    clientTimeout: 12 * 60 * 1000  // 12 minutes client-side timeout
   },
   
-  // Initialize Tortoise-TTS settings
+  // Generate speech using Tortoise-TTS with proper timeout handling
+  generateTortoiseAudio: async function(text) {
+    console.log("Generating speech with Tortoise-TTS:", text.substring(0, 30) + "...");
+    
+    const cacheKey = `tortoise_${this.tortoiseConfig.voiceName}_${text}`;
+    
+    if (this.audioCache.has(cacheKey)) {
+      console.log("Using cached Tortoise-TTS audio");
+      return this.audioCache.get(cacheKey);
+    }
+    
+    try {
+      // Create AbortController for client-side timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        console.log('Client-side timeout reached for Tortoise-TTS request');
+      }, this.tortoiseConfig.clientTimeout);
+      
+      console.log(`Starting Tortoise-TTS request with ${this.tortoiseConfig.clientTimeout / 1000}s timeout...`);
+      
+      const response = await fetch('/api/tortoise-tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: text,
+          voice: this.tortoiseConfig.voiceName,
+          preset: this.tortoiseConfig.preset
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn("Tortoise-TTS API error:", response.status, errorData);
+        throw new Error(`Tortoise-TTS API error: ${response.status} - ${errorData.error || 'Unknown error'}`);
+      }
+      
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      this.audioCache.set(cacheKey, audioUrl);
+      console.log("Successfully generated and cached Tortoise-TTS audio");
+      
+      return audioUrl;
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.error("Tortoise-TTS request was aborted due to timeout");
+      } else {
+        console.error("Error with Tortoise-TTS:", error);
+      }
+      
+      if (this.tortoiseConfig.fallbackToDefault) {
+        console.log("Falling back to default TTS");
+        return this.originalTextToSpeech(text);
+      }
+      
+      return null;
+    }
+  },
+  
+  // Rest of the methods remain the same...
   initTortoiseTTS: function() {
-    // Load Tortoise settings from localStorage
     const savedSettings = localStorage.getItem('gogginsTortoiseSettings');
     if (savedSettings) {
       try {
@@ -129,128 +259,49 @@ Object.assign(voiceChat, {
         console.error('Error parsing Tortoise-TTS settings:', e);
       }
     }
-    
-    // Add Tortoise voice option to voice select dropdown
     this.addTortoiseVoiceOption();
   },
   
-  // Save Tortoise-TTS settings
   saveTortoiseSettings: function() {
     localStorage.setItem('gogginsTortoiseSettings', JSON.stringify(this.tortoiseConfig));
     console.log("Tortoise-TTS settings saved");
   },
   
-  // Add the Tortoise voice option to the voice selection dropdown
   addTortoiseVoiceOption: function() {
     const voiceSelect = document.getElementById('voice-select');
-    if (voiceSelect) {
-      // Check if option already exists
-      if (!voiceSelect.querySelector('option[value="tortoise_goggins"]')) {
-        // Create new option
-        const option = document.createElement('option');
-        option.value = 'tortoise_goggins';
-        option.textContent = 'David Goggins (Tortoise-TTS)';
-        
-        // Insert at top of list
-        voiceSelect.insertBefore(option, voiceSelect.firstChild);
-        
-        // Select by default if enabled
-        if (this.tortoiseConfig.enabled) {
-          voiceSelect.value = 'tortoise_goggins';
-        }
-        
-        console.log("Added Tortoise-TTS Goggins voice option");
+    if (voiceSelect && !voiceSelect.querySelector('option[value="tortoise_goggins"]')) {
+      const option = document.createElement('option');
+      option.value = 'tortoise_goggins';
+      option.textContent = 'David Goggins (Tortoise-TTS)';
+      voiceSelect.insertBefore(option, voiceSelect.firstChild);
+      
+      if (this.tortoiseConfig.enabled) {
+        voiceSelect.value = 'tortoise_goggins';
       }
+      console.log("Added Tortoise-TTS Goggins voice option");
     }
   },
   
-  // Generate speech using Tortoise-TTS
-  generateTortoiseAudio: async function(text) {
-    console.log("Generating speech with Tortoise-TTS:", text.substring(0, 30) + "...");
-    
-    // Create a unique cache key for this text
-    const cacheKey = `tortoise_${this.tortoiseConfig.voiceName}_${text}`;
-    
-    // Check cache first
-    if (this.audioCache.has(cacheKey)) {
-      console.log("Using cached Tortoise-TTS audio");
-      return this.audioCache.get(cacheKey);
-    }
-    
-    try {
-      // Call the Tortoise-TTS endpoint
-      const response = await fetch('/api/tortoise-tts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          text: text,
-          voice: this.tortoiseConfig.voiceName,
-          preset: this.tortoiseConfig.preset
-        })
-      });
-      
-      if (!response.ok) {
-        console.warn("Tortoise-TTS API error, falling back to standard voice");
-        throw new Error(`Tortoise-TTS API error: ${response.status}`);
-      }
-      
-      // Process the audio response
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      
-      // Cache the audio
-      this.audioCache.set(cacheKey, audioUrl);
-      
-      return audioUrl;
-    } catch (error) {
-      console.error("Error with Tortoise-TTS:", error);
-      
-      // Fall back to default TTS if enabled
-      if (this.tortoiseConfig.fallbackToDefault) {
-        console.log("Falling back to default TTS");
-        return this.originalTextToSpeech(text);
-      }
-      
-      return null;
-    }
-  },
-  
-  // Override the textToSpeech method to use Tortoise-TTS
   textToSpeechWithTortoise: async function(text) {
-    // Check if Tortoise is selected in the dropdown
     if (this.settings.voice === 'tortoise_goggins' && this.tortoiseConfig.enabled) {
       return this.generateTortoiseAudio(text);
     } else {
-      // Use original method for other voices
       return this.originalTextToSpeech(text);
     }
   },
   
-  // Set up Tortoise-TTS integration
   setupTortoiseTTS: function() {
-    // Save the original method for fallback
     this.originalTextToSpeech = this.textToSpeech;
-    
-    // Override with our Tortoise implementation
     this.textToSpeech = this.textToSpeechWithTortoise;
-    
-    // Initialize Tortoise settings
     this.initTortoiseTTS();
-    
-    // Add Tortoise UI controls to settings panel
     this.addTortoiseControls();
-    
     console.log("Tortoise-TTS integration set up");
   },
   
-  // Add Tortoise-TTS controls to the settings panel
   addTortoiseControls: function() {
     const settingsContent = document.querySelector('.settings-content');
     if (!settingsContent) return;
     
-    // Create Tortoise settings section
     const tortoiseSection = document.createElement('div');
     tortoiseSection.className = 'setting-group';
     tortoiseSection.innerHTML = `
@@ -265,15 +316,14 @@ Object.assign(voiceChat, {
       <div style="margin-top: 10px;">
         <label for="tortoise-preset">Generation Quality:</label>
         <select id="tortoise-preset" style="width: 100%; margin-top: 5px;">
-          <option value="ultra_fast" ${this.tortoiseConfig.preset === 'ultra_fast' ? 'selected' : ''}>Ultra Fast (Lower Quality)</option>
-          <option value="fast" ${this.tortoiseConfig.preset === 'fast' ? 'selected' : ''}>Fast (Balanced)</option>
-          <option value="standard" ${this.tortoiseConfig.preset === 'standard' ? 'selected' : ''}>Standard (Better Quality)</option>
-          <option value="high_quality" ${this.tortoiseConfig.preset === 'high_quality' ? 'selected' : ''}>High Quality (Slower)</option>
+          <option value="ultra_fast" ${this.tortoiseConfig.preset === 'ultra_fast' ? 'selected' : ''}>Ultra Fast (5 min timeout)</option>
+          <option value="fast" ${this.tortoiseConfig.preset === 'fast' ? 'selected' : ''}>Fast (10 min timeout)</option>
+          <option value="standard" ${this.tortoiseConfig.preset === 'standard' ? 'selected' : ''}>Standard (15 min timeout)</option>
+          <option value="high_quality" ${this.tortoiseConfig.preset === 'high_quality' ? 'selected' : ''}>High Quality (20 min timeout)</option>
         </select>
       </div>
     `;
     
-    // Insert before the settings footer
     const settingsFooter = document.querySelector('.settings-footer');
     if (settingsFooter) {
       settingsContent.insertBefore(tortoiseSection, settingsFooter);
@@ -288,7 +338,6 @@ Object.assign(voiceChat, {
         this.tortoiseConfig.enabled = tortoiseEnabled.checked;
         this.saveTortoiseSettings();
         
-        // Update voice selection
         const voiceSelect = document.getElementById('voice-select');
         if (voiceSelect && this.tortoiseConfig.enabled) {
           voiceSelect.value = 'tortoise_goggins';
@@ -311,9 +360,6 @@ Object.assign(voiceChat, {
 // Initialize Tortoise-TTS when voice chat initializes
 const originalVoiceChatInit = voiceChat.init;
 voiceChat.init = function() {
-  // Call the original init method
   originalVoiceChatInit.call(this);
-  
-  // Set up Tortoise-TTS
   this.setupTortoiseTTS();
 };

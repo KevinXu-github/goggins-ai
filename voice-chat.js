@@ -1,4 +1,4 @@
-// voice-chat.js - Handles the voice chat functionality
+// voice-chat.js 
 
 // Voice chat state
 const voiceChat = {
@@ -6,7 +6,7 @@ const voiceChat = {
     settings: {
         enabled: true,
         speechRecognitionEnabled: false,
-        voice: 'onyx',  // Options: 'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'
+        voice: 'onyx',  // Options: 'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer', 'tortoise_goggins'
         model: 'tts-1',
         speed: 1.1      // Slightly faster for Goggins
     },
@@ -18,15 +18,40 @@ const voiceChat = {
     // Audio cache to avoid regenerating the same messages
     audioCache: new Map(), // Maps text to audio URLs
     
+    // Valid OpenAI voices
+    validOpenAIVoices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
+    
     // Initialize voice chat functionality
     init: function() {
         console.log("Initializing voice chat");
         // Load settings from localStorage
         this.loadSettings();
         
+        // Add custom voice options to dropdown
+        this.addCustomVoiceOptions();
+        
         // Initialize speech recognition if available in the browser
         if (this.settings.speechRecognitionEnabled) {
             this.initSpeechRecognition();
+        }
+    },
+    
+    // Add custom voice options to the dropdown
+    addCustomVoiceOptions: function() {
+        const voiceSelect = document.getElementById('voice-select');
+        if (voiceSelect) {
+            // Check if Tortoise option already exists
+            if (!voiceSelect.querySelector('option[value="tortoise_goggins"]')) {
+                // Create new option for Tortoise-TTS
+                const option = document.createElement('option');
+                option.value = 'tortoise_goggins';
+                option.textContent = 'David Goggins (Tortoise-TTS)';
+                
+                // Insert at top of list
+                voiceSelect.insertBefore(option, voiceSelect.firstChild);
+                
+                console.log("Added Tortoise-TTS Goggins voice option");
+            }
         }
     },
     
@@ -155,23 +180,119 @@ const voiceChat = {
         }
     },
     
-    // Convert text to speech using OpenAI API
-    textToSpeech: async function(text) {
-        console.log("Converting text to speech:", text.substring(0, 30) + "...");
+    // Show progress message to user
+    showTortoiseProgress: function(message) {
+        // Remove any existing progress message
+        this.hideTortoiseProgress();
         
-        // Check if we have this audio cached
-        if (this.audioCache.has(text)) {
-            console.log("Using cached audio for text");
-            return this.audioCache.get(text);
+        // Create progress message element
+        const progressDiv = document.createElement('div');
+        progressDiv.id = 'tortoise-progress';
+        progressDiv.className = 'ai-message tortoise-progress';
+        progressDiv.innerHTML = `
+            <div class="message-content">
+                <i class="fas fa-cog fa-spin" style="margin-right: 8px; color: #ff3b25;"></i>
+                ${message}
+            </div>
+        `;
+        
+        // Add to chat
+        const chatBox = document.getElementById('chat-box');
+        if (chatBox) {
+            chatBox.appendChild(progressDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    },
+
+    // Hide progress message
+    hideTortoiseProgress: function() {
+        const progressDiv = document.getElementById('tortoise-progress');
+        if (progressDiv) {
+            progressDiv.remove();
+        }
+    },
+    
+    // Generate speech using Tortoise-TTS
+    generateTortoiseAudio: async function(text) {
+        console.log("Generating speech with Tortoise-TTS:", text.substring(0, 30) + "...");
+        
+        // Create a unique cache key for this text
+        const cacheKey = `tortoise_goggins_${text}`;
+        
+        // Check cache first
+        if (this.audioCache.has(cacheKey)) {
+            console.log("Using cached Tortoise-TTS audio");
+            return this.audioCache.get(cacheKey);
         }
         
-        if (!this.settings.enabled) {
-            console.log("Voice is disabled, skipping TTS");
+        // Show user that Tortoise-TTS is starting (it takes time!)
+        this.showTortoiseProgress("🎤 Starting Tortoise-TTS generation... This may take 5-10 minutes for high quality David Goggins voice. Stay hard!");
+        
+        try {
+            // Call the Tortoise-TTS endpoint
+            const response = await fetch('/api/tortoise-tts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    voice: 'goggins',
+                    preset: 'fast'
+                })
+            });
+            
+            if (!response.ok) {
+                this.hideTortoiseProgress();
+                console.warn("Tortoise-TTS API error, falling back to OpenAI voice");
+                throw new Error(`Tortoise-TTS API error: ${response.status}`);
+            }
+            
+            this.showTortoiseProgress("🔥 Tortoise-TTS generation completed! Processing audio...");
+            
+            // Process the audio response
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            // Cache the audio
+            this.audioCache.set(cacheKey, audioUrl);
+            
+            this.hideTortoiseProgress();
+            console.log("Tortoise-TTS generation successful!");
+            
+            return audioUrl;
+        } catch (error) {
+            this.hideTortoiseProgress();
+            console.error("Error with Tortoise-TTS:", error);
+            
+            // Fall back to OpenAI TTS with a suitable voice
+            console.log("Falling back to OpenAI TTS with 'onyx' voice");
+            return this.generateOpenAIAudio(text, 'onyx');
+        }
+    },
+    
+    // Generate speech using OpenAI TTS
+    generateOpenAIAudio: async function(text, voice = null) {
+        const selectedVoice = voice || this.settings.voice;
+        
+        // Validate voice
+        if (!this.validOpenAIVoices.includes(selectedVoice)) {
+            console.error("Invalid OpenAI voice:", selectedVoice);
             return null;
         }
         
+        console.log(`Generating speech with OpenAI TTS: voice=${selectedVoice}, speed=${this.settings.speed}`);
+        
+        // Create cache key
+        const cacheKey = `openai_${selectedVoice}_${this.settings.speed}_${text}`;
+        
+        // Check cache first
+        if (this.audioCache.has(cacheKey)) {
+            console.log("Using cached OpenAI audio");
+            return this.audioCache.get(cacheKey);
+        }
+        
         try {
-            console.log(`Sending TTS request: voice=${this.settings.voice}, speed=${this.settings.speed}`);
             const response = await fetch('/api/tts', {
                 method: 'POST',
                 headers: {
@@ -179,28 +300,52 @@ const voiceChat = {
                 },
                 body: JSON.stringify({
                     text: text,
-                    voice: this.settings.voice,
+                    voice: selectedVoice,
                     speed: this.settings.speed
                 })
             });
 
             if (!response.ok) {
-                console.error(`TTS API error: ${response.status}`);
-                throw new Error(`TTS API error: ${response.status}`);
+                console.error(`OpenAI TTS API error: ${response.status}`);
+                throw new Error(`OpenAI TTS API error: ${response.status}`);
             }
             
             // Get blob from response
             const audioBlob = await response.blob();
             const audioUrl = URL.createObjectURL(audioBlob);
-            console.log("Created audio URL:", audioUrl);
+            console.log("Created OpenAI audio URL:", audioUrl);
             
             // Cache the audio URL
-            this.audioCache.set(text, audioUrl);
+            this.audioCache.set(cacheKey, audioUrl);
             
             return audioUrl;
         } catch (error) {
-            console.error('Error generating speech:', error);
+            console.error('Error generating OpenAI speech:', error);
             return null;
+        }
+    },
+    
+    // Main text-to-speech function with proper routing
+    textToSpeech: async function(text) {
+        console.log("Converting text to speech:", text.substring(0, 30) + "...");
+        console.log("Selected voice:", this.settings.voice);
+        
+        if (!this.settings.enabled) {
+            console.log("Voice is disabled, skipping TTS");
+            return null;
+        }
+        
+        // Route to appropriate TTS system based on voice selection
+        if (this.settings.voice === 'tortoise_goggins') {
+            console.log("Routing to Tortoise-TTS");
+            return this.generateTortoiseAudio(text);
+        } else if (this.validOpenAIVoices.includes(this.settings.voice)) {
+            console.log("Routing to OpenAI TTS");
+            return this.generateOpenAIAudio(text);
+        } else {
+            console.error("Unknown voice type:", this.settings.voice);
+            console.log("Falling back to OpenAI TTS with 'onyx' voice");
+            return this.generateOpenAIAudio(text, 'onyx');
         }
     },
     
@@ -341,9 +486,14 @@ const voiceChat = {
             console.log("Setting up voice type selection");
             voiceSelect.value = this.settings.voice;
             voiceSelect.addEventListener('change', () => {
+                const oldVoice = this.settings.voice;
                 this.settings.voice = voiceSelect.value;
-                console.log("Voice type changed to:", this.settings.voice);
+                console.log(`Voice type changed from '${oldVoice}' to '${this.settings.voice}'`);
                 this.saveSettings();
+                
+                // Clear cache when voice changes to avoid playing wrong voice
+                this.audioCache.clear();
+                console.log("Audio cache cleared due to voice change");
             });
         } else {
             console.error("Voice select not found");

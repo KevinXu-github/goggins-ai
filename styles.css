@@ -635,3 +635,23 @@ input:checked + .toggle-slider:before {
 .dark-mode .toggle-slider {
     background-color: #555;
 }
+
+/* Tortoise-TTS Progress Message Styling */
+.tortoise-progress .message-content {
+    background-color: #2a5490 !important; /* Different color to distinguish from regular messages */
+    border-left: 4px solid #ff3b25;
+    font-style: italic;
+    opacity: 0.9;
+}
+
+.tortoise-progress .fa-cog {
+    color: #ff3b25;
+    animation: spin 2s linear infinite;
+}
+
+/* Spinning animation for the cog icon */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+

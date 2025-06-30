@@ -33,7 +33,7 @@ const defaultSettings = {
     apiKey: '', // Will be loaded from server
     voiceEnabled: true,
     speechInputEnabled: false,
-    voiceType: 'onyx',
+    voiceType: 'tortoise_goggins',
     voiceSpeed: 1.1
 };
 
@@ -171,8 +171,6 @@ function createSystemPrompt(intensity) {
     }
 }
 
-// Add these event listeners at the end of your app.js file
-
 // Initialize the app when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize voice chat features
@@ -238,7 +236,6 @@ function setupEventListeners() {
     
     console.log("Event listeners initialized with color support");
 }
-
 
 // Send a message to the chatbot
 async function sendMessage() {
@@ -381,7 +378,55 @@ function updateMoodPhrase() {
     moodText.textContent = phrase;
 }
 
-// Load settings from localStorage
+// Enhanced setActiveColor function with better brightness calculation
+function setActiveColor(color) {
+    console.log("Setting active color:", color);
+    
+    // Set CSS custom properties
+    document.documentElement.style.setProperty('--primary-color', color);
+    document.documentElement.style.setProperty('--primary-hover', adjustColorBrightness(color, 20));
+    document.documentElement.style.setProperty('--primary-light', adjustColorBrightness(color, 30));
+    
+    // Update active color in settings
+    colorOptions.forEach(option => {
+        if (option.getAttribute('data-color') === color) {
+            option.classList.add('active');
+        } else {
+            option.classList.remove('active');
+        }
+    });
+    
+    // Save the color to settings
+    chatbotState.settings.primaryColor = color;
+    
+    console.log("Color updated successfully");
+}
+
+// Improved color brightness adjustment function
+function adjustColorBrightness(hex, percent) {
+    // Remove # if present
+    hex = hex.replace('#', '');
+    
+    // Convert hex to rgb
+    let r = parseInt(hex.substr(0, 2), 16);
+    let g = parseInt(hex.substr(2, 2), 16);
+    let b = parseInt(hex.substr(4, 2), 16);
+    
+    // Adjust brightness
+    r = Math.min(255, Math.max(0, r + percent));
+    g = Math.min(255, Math.max(0, g + percent));
+    b = Math.min(255, Math.max(0, b + percent));
+    
+    // Convert back to hex
+    const toHex = (c) => {
+        const hex = c.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    };
+    
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+// Enhanced loadSettings function to properly apply colors
 function loadSettings() {
     const savedSettings = localStorage.getItem('gogginsSettings');
     if (savedSettings) {
@@ -422,8 +467,7 @@ function loadSettings() {
     loadChatHistory();
 }
 
-
-// Save settings to localStorage
+// Enhanced saveSettings function
 function saveSettings() {
     // Get values from UI
     chatbotState.settings.name = chatbotNameInput.value;
@@ -461,7 +505,6 @@ function saveSettings() {
     closeSettings();
 }
 
-
 // Reset settings to defaults
 function resetSettings() {
     chatbotState.settings = { ...defaultSettings };
@@ -476,55 +519,6 @@ function resetSettings() {
     setActiveColor(defaultSettings.primaryColor);
     
     console.log("Settings reset to defaults");
-}
-
-// Set active color theme
-function setActiveColor(color) {
-    console.log("Setting active color:", color);
-    
-    // Set CSS custom properties
-    document.documentElement.style.setProperty('--primary-color', color);
-    document.documentElement.style.setProperty('--primary-hover', adjustColorBrightness(color, 20));
-    document.documentElement.style.setProperty('--primary-light', adjustColorBrightness(color, 30));
-    
-    // Update active color in settings
-    colorOptions.forEach(option => {
-        if (option.getAttribute('data-color') === color) {
-            option.classList.add('active');
-        } else {
-            option.classList.remove('active');
-        }
-    });
-    
-    // Save the color to settings
-    chatbotState.settings.primaryColor = color;
-    
-    console.log("Color updated successfully");
-}
-
-
-// Adjust color brightness (simple helper)
-function adjustColorBrightness(hex, percent) {
-    // Remove # if present
-    hex = hex.replace('#', '');
-    
-    // Convert hex to rgb
-    let r = parseInt(hex.substr(0, 2), 16);
-    let g = parseInt(hex.substr(2, 2), 16);
-    let b = parseInt(hex.substr(4, 2), 16);
-    
-    // Adjust brightness
-    r = Math.min(255, Math.max(0, r + percent));
-    g = Math.min(255, Math.max(0, g + percent));
-    b = Math.min(255, Math.max(0, b + percent));
-    
-    // Convert back to hex
-    const toHex = (c) => {
-        const hex = c.toString(16);
-        return hex.length === 1 ? '0' + hex : hex;
-    };
-    
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
 // Open settings panel
@@ -575,4 +569,15 @@ function loadChatHistory() {
             console.error("Error loading chat history:", e);
         }
     }
+}
+
+// Debug function to test color changes
+function debugColorChange() {
+    console.log("Available colors:");
+    colorOptions.forEach((option, index) => {
+        const color = option.getAttribute('data-color');
+        console.log(`${index}: ${color}`);
+    });
+    
+    console.log("Current primary color:", getComputedStyle(document.documentElement).getPropertyValue('--primary-color'));
 }
