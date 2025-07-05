@@ -31,7 +31,7 @@ async function cleanIndexes() {
     
     // Recreate the User model to rebuild indexes
     console.log('🔄 Recreating indexes...');
-    const User = require('./models/User');
+    const User = require('./models/User.js');
     await User.ensureIndexes();
     
     console.log('✅ Indexes cleaned and recreated successfully!');

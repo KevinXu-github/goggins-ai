@@ -10,6 +10,17 @@
 </head>
 <body>
     <div class="page-container">
+      <!-- User info bar -->
+      <div class="user-info-bar">
+          <div class="user-info">
+              <i class="fas fa-user"></i>
+              <span id="username">Loading...</span>
+          </div>
+          <button id="logout-btn" class="logout-btn" title="Logout">
+              <i class="fas fa-sign-out-alt"></i>
+          </button>
+      </div>
+      
       <div class="chat-container">
           <div class="chat-header">
               <button id="settings-btn" class="settings-btn" title="Settings">
@@ -140,5 +151,6 @@
     <!-- Load scripts in proper order -->
     <script src="voice-chat.js"></script>
     <script src="app.js"></script>
+    <script src="auth.js"></script>
 </body>
 </html>
