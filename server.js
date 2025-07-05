@@ -11,6 +11,10 @@ const MongoStore = require('connect-mongo');
 const DatabaseConnection = require('./database/connection');
 const DatabaseService = require('./services/DatabaseService');
 
+// Import auth routes and middleware
+const authRoutes = require('./routes/auth');
+const { requireAuth, requireAuthPage } = require('./middleware/auth');
+
 require('dotenv').config();
 
 const app = express();
@@ -18,7 +22,6 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
 
 // Create audio cache directory
 const audioDir = path.join(__dirname, 'audio_cache');
@@ -49,7 +52,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// API key endpoint (existing)
+// Register auth routes FIRST
+app.use('/api/auth', authRoutes);
+
+// Authentication-related routes (BEFORE static files)
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+// Protect the main page with authentication
+app.get('/', requireAuthPage, (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// API key endpoint
 app.get('/api-key', (req, res) => {
   console.log("API key request received");
   if (process.env.OPENAI_API_KEY) {
@@ -250,7 +266,7 @@ app.get('/api/user-stats', async (req, res) => {
   }
 });
 
-// OpenAI TTS endpoint (existing)
+// OpenAI TTS endpoint
 app.post('/api/tts', async (req, res) => {
   console.log("TTS request received:", req.body.text?.substring(0, 30) + "...");
   
@@ -305,7 +321,7 @@ app.post('/api/tts', async (req, res) => {
   }
 });
 
-// Tortoise-TTS endpoint (existing)
+// Tortoise-TTS endpoint
 app.post('/api/tortoise-tts', async (req, res) => {
   console.log("Tortoise-TTS request received:", req.body.text?.substring(0, 30) + "...");
   
@@ -488,7 +504,7 @@ app.post('/api/tortoise-tts', async (req, res) => {
   }
 });
 
-// Test endpoints (existing)
+// Test endpoints
 app.get('/api/test-key', (req, res) => {
   console.log("Testing API key:", process.env.OPENAI_API_KEY ? "Available" : "Missing");
   if (process.env.OPENAI_API_KEY) {
@@ -523,7 +539,10 @@ app.get('/api/test-tortoise', (req, res) => {
   });
 });
 
-// Helper functions (your existing OpenAI logic)
+// Static file serving MUST come LAST
+app.use(express.static(path.join(__dirname)));
+
+// Helper functions
 async function getOpenAIResponse(message, systemPrompt) {
   try {
     console.log("Getting OpenAI response for message:", message);
