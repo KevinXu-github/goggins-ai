@@ -67,12 +67,9 @@ app.get('/', requireAuthPage, (req, res) => {
 
 // API key endpoint
 app.get('/api-key', (req, res) => {
-  console.log("API key request received");
   if (process.env.OPENAI_API_KEY) {
-    console.log("Returning API key (hidden for security)");
     res.json({ key: process.env.OPENAI_API_KEY });
   } else {
-    console.log("No API key found in environment variables");
     res.status(404).json({ error: 'API key not found in environment variables' });
   }
 });
@@ -506,7 +503,6 @@ app.post('/api/tortoise-tts', async (req, res) => {
 
 // Test endpoints
 app.get('/api/test-key', (req, res) => {
-  console.log("Testing API key:", process.env.OPENAI_API_KEY ? "Available" : "Missing");
   if (process.env.OPENAI_API_KEY) {
     const keyPreview = process.env.OPENAI_API_KEY.substring(0, 5) + "...";
     res.json({ 
@@ -522,8 +518,6 @@ app.get('/api/test-key', (req, res) => {
 });
 
 app.get('/api/test-tortoise', (req, res) => {
-  console.log("Testing Tortoise-TTS setup");
-  
   const checks = {
     pythonScript: fs.existsSync(path.join(__dirname, 'generate_speech.py')),
     voiceSamples: fs.existsSync(path.join(__dirname, 'voice_samples')),

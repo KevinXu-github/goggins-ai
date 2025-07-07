@@ -4,9 +4,6 @@
   "description": "A motivational chatbot inspired by David Goggins with voice capabilities and user authentication",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "setup-demo": "node scripts/create-demo-user.js",
     "db:setup": "node scripts/setup-database.js",
     "db:reset": "node scripts/reset-database.js"
   },

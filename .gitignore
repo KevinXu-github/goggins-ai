@@ -3,3 +3,18 @@ node_modules/
 assets/
 voice_samples/
 output/
+
+# Backup files from cleanup
+backup_*/
+cleanup-script.js
+
+# Audio cache
+audio_cache/
+
+# Temporary files
+*.tmp
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db

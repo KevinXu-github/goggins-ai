@@ -23,7 +23,6 @@ const voiceChat = {
     
     // Initialize voice chat functionality
     init: function() {
-        console.log("Initializing voice chat");
         // Load settings from localStorage
         this.loadSettings();
         
@@ -49,8 +48,6 @@ const voiceChat = {
                 
                 // Insert at top of list
                 voiceSelect.insertBefore(option, voiceSelect.firstChild);
-                
-                console.log("Added Tortoise-TTS Goggins voice option");
             }
         }
     },
@@ -59,7 +56,6 @@ const voiceChat = {
     saveSettings: function() {
         const settings = JSON.stringify(this.settings);
         localStorage.setItem('gogginsVoiceSettings', settings);
-        console.log("Voice settings saved:", this.settings);
     },
     
     // Load voice settings from localStorage
@@ -69,12 +65,9 @@ const voiceChat = {
             try {
                 const parsed = JSON.parse(savedSettings);
                 this.settings = { ...this.settings, ...parsed };
-                console.log("Voice settings loaded:", this.settings);
             } catch (e) {
                 console.error('Error parsing voice settings:', e);
             }
-        } else {
-            console.log("No saved voice settings found, using defaults");
         }
     },
     
@@ -117,7 +110,6 @@ const voiceChat = {
                 this.stopListening();
             };
             
-            console.log("Speech recognition initialized successfully");
             return true;
         } catch (e) {
             console.error('Error initializing speech recognition:', e);
@@ -135,7 +127,6 @@ const voiceChat = {
         try {
             this.recognition.start();
             this.isListening = true;
-            console.log("Started listening for speech input");
             
             // Update UI to show listening state
             const micBtn = document.getElementById('mic-btn');
@@ -153,7 +144,6 @@ const voiceChat = {
         if (this.recognition) {
             try {
                 this.recognition.stop();
-                console.log("Stopped listening for speech input");
             } catch (e) {
                 // Ignore errors when stopping recognition
                 console.warn("Error stopping recognition:", e);
@@ -172,7 +162,6 @@ const voiceChat = {
     
     // Toggle listening state
     toggleListening: function() {
-        console.log("Toggling speech recognition:", this.isListening ? "OFF" : "ON");
         if (this.isListening) {
             this.stopListening();
         } else {
@@ -221,7 +210,6 @@ const voiceChat = {
         
         // Check cache first
         if (this.audioCache.has(cacheKey)) {
-            console.log("Using cached Tortoise-TTS audio");
             return this.audioCache.get(cacheKey);
         }
         
@@ -266,7 +254,6 @@ const voiceChat = {
             console.error("Error with Tortoise-TTS:", error);
             
             // Fall back to OpenAI TTS with a suitable voice
-            console.log("Falling back to OpenAI TTS with 'onyx' voice");
             return this.generateOpenAIAudio(text, 'onyx');
         }
     },
@@ -281,14 +268,11 @@ const voiceChat = {
             return null;
         }
         
-        console.log(`Generating speech with OpenAI TTS: voice=${selectedVoice}, speed=${this.settings.speed}`);
-        
         // Create cache key
         const cacheKey = `openai_${selectedVoice}_${this.settings.speed}_${text}`;
         
         // Check cache first
         if (this.audioCache.has(cacheKey)) {
-            console.log("Using cached OpenAI audio");
             return this.audioCache.get(cacheKey);
         }
         
@@ -313,7 +297,6 @@ const voiceChat = {
             // Get blob from response
             const audioBlob = await response.blob();
             const audioUrl = URL.createObjectURL(audioBlob);
-            console.log("Created OpenAI audio URL:", audioUrl);
             
             // Cache the audio URL
             this.audioCache.set(cacheKey, audioUrl);
@@ -327,24 +310,17 @@ const voiceChat = {
     
     // Main text-to-speech function with proper routing
     textToSpeech: async function(text) {
-        console.log("Converting text to speech:", text.substring(0, 30) + "...");
-        console.log("Selected voice:", this.settings.voice);
-        
         if (!this.settings.enabled) {
-            console.log("Voice is disabled, skipping TTS");
             return null;
         }
         
         // Route to appropriate TTS system based on voice selection
         if (this.settings.voice === 'tortoise_goggins') {
-            console.log("Routing to Tortoise-TTS");
             return this.generateTortoiseAudio(text);
         } else if (this.validOpenAIVoices.includes(this.settings.voice)) {
-            console.log("Routing to OpenAI TTS");
             return this.generateOpenAIAudio(text);
         } else {
             console.error("Unknown voice type:", this.settings.voice);
-            console.log("Falling back to OpenAI TTS with 'onyx' voice");
             return this.generateOpenAIAudio(text, 'onyx');
         }
     },
@@ -358,7 +334,6 @@ const voiceChat = {
         
         const audioPlayer = document.getElementById('audio-player');
         if (audioPlayer) {
-            console.log("Playing audio:", audioUrl);
             audioPlayer.src = audioUrl;
             audioPlayer.play();
         } else {
@@ -380,7 +355,6 @@ const voiceChat = {
                 // If we have an audio URL, use it; otherwise, generate one
                 let url = audioUrl;
                 if (!url && this.settings.enabled) {
-                    console.log("No audio URL, generating new audio");
                     url = await this.textToSpeech(text);
                 }
                 
@@ -407,12 +381,9 @@ const voiceChat = {
     
     // Event handler setup for voice buttons
     setupEventListeners: function() {
-        console.log("Setting up voice event listeners");
-        
         // Mic button for speech recognition
         const micBtn = document.getElementById('mic-btn');
         if (micBtn) {
-            console.log("Setting up mic button listener");
             micBtn.addEventListener('click', () => this.toggleListening());
         } else {
             console.error("Mic button not found");
@@ -421,7 +392,6 @@ const voiceChat = {
         // Voice toggle button
         const voiceBtn = document.getElementById('voice-btn');
         if (voiceBtn) {
-            console.log("Setting up voice button listener");
             // Set initial state
             if (this.settings.enabled) {
                 voiceBtn.classList.add('active');
@@ -430,7 +400,6 @@ const voiceChat = {
             voiceBtn.addEventListener('click', () => {
                 voiceBtn.classList.toggle('active');
                 this.settings.enabled = voiceBtn.classList.contains('active');
-                console.log("Voice enabled changed to:", this.settings.enabled);
                 this.saveSettings();
             });
         } else {
@@ -440,11 +409,9 @@ const voiceChat = {
         // Settings panel voice toggles
         const voiceToggle = document.getElementById('voice-output');
         if (voiceToggle) {
-            console.log("Setting up voice toggle in settings");
             voiceToggle.checked = this.settings.enabled;
             voiceToggle.addEventListener('change', () => {
                 this.settings.enabled = voiceToggle.checked;
-                console.log("Voice enabled changed to:", this.settings.enabled);
                 
                 // Update voice button state
                 if (voiceBtn) {
@@ -464,11 +431,9 @@ const voiceChat = {
         // Speech recognition toggle
         const speechToggle = document.getElementById('speech-input');
         if (speechToggle) {
-            console.log("Setting up speech recognition toggle");
             speechToggle.checked = this.settings.speechRecognitionEnabled;
             speechToggle.addEventListener('change', () => {
                 this.settings.speechRecognitionEnabled = speechToggle.checked;
-                console.log("Speech recognition enabled changed to:", this.settings.speechRecognitionEnabled);
                 
                 if (this.settings.speechRecognitionEnabled && !this.recognition) {
                     this.initSpeechRecognition();
@@ -483,22 +448,16 @@ const voiceChat = {
         // Voice type selection
         const voiceSelect = document.getElementById('voice-select');
         if (voiceSelect) {
-            console.log("Setting up voice type selection");
             voiceSelect.value = this.settings.voice;
             voiceSelect.addEventListener('change', () => {
-                const oldVoice = this.settings.voice;
                 this.settings.voice = voiceSelect.value;
-                console.log(`Voice type changed from '${oldVoice}' to '${this.settings.voice}'`);
                 this.saveSettings();
                 
                 // Clear cache when voice changes to avoid playing wrong voice
                 this.audioCache.clear();
-                console.log("Audio cache cleared due to voice change");
             });
         } else {
             console.error("Voice select not found");
         }
-        
-        console.log("Voice event listeners setup complete");
     }
 };
