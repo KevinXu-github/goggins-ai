@@ -4,12 +4,6 @@ assets/
 voice_samples/
 output/
 
-# Backup files from cleanup
-backup_*/
-cleanup-script.js
-
-# Audio cache
-audio_cache/
 
 # Temporary files
 *.tmp
