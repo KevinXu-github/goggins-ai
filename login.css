@@ -34,10 +34,12 @@ body::before {
     border-radius: 15px;
     padding: 40px;
     width: 100%;
-    max-width: 400px;
+    max-width: 450px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .login-header {
@@ -237,6 +239,43 @@ body::before {
     text-transform: uppercase;
 }
 
+/* Demo Account Info Section */
+.demo-info {
+    margin-top: 25px;
+    padding: 20px;
+    background: rgba(255, 59, 37, 0.1);
+    border: 1px solid rgba(255, 59, 37, 0.3);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.demo-info h4 {
+    font-family: 'Oswald', sans-serif;
+    color: #ff3b25;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    text-transform: uppercase;
+}
+
+.demo-info p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: #fff;
+}
+
+.demo-info strong {
+    color: #ff3b25;
+    font-weight: 700;
+}
+
+.demo-info small {
+    display: block;
+    margin-top: 10px;
+    color: #ccc;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
 .loading {
     position: relative;
     overflow: hidden;
@@ -256,4 +295,21 @@ body::before {
 @keyframes loading {
     0% { left: -100%; }
     100% { left: 100%; }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 480px) {
+    .login-container {
+        margin: 20px;
+        padding: 30px 25px;
+        max-width: none;
+    }
+    
+    .login-header h1 {
+        font-size: 2rem;
+    }
+    
+    .demo-info {
+        padding: 15px;
+    }
 }
